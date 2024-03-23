@@ -5,7 +5,7 @@ n_run_method: series
 seed: 0
 wandb:
     project: emma
-    mode: disabled
+    # mode: disabled
 env_config:
     env_id: emma.envs.color_door_key.ColoredDoorKeyEnv
     door_color: red
@@ -16,9 +16,9 @@ env_config:
         - [red, blue]
 wrapper_cls_lst:
     - minigrid.wrappers.ImgObsWrapper
-total_time_steps: 5000000
+total_time_steps: 5000
 transfer_steps:
-    - 2000000
+    - 2000
 log: true
 save_model: true
 record_policy_videos: true
