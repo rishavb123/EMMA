@@ -1,0 +1,28 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools >= 61.0.0"]
+
+[project]
+name = "emma"
+description = "An agent capabile of optimizing an external model as quickly as possible while still performing well on its given task."
+keywords = ["reinforcement", "learning", "exploration", "interest"]
+authors = [{ name = "Rishav Bhagat", email = "rishavbhagat.cs@gmail.com" }]
+readme = "README.md"
+dynamic = ["version"]
+requires-python = ">=3.11"
+dependencies = [
+    "experiment-lab",
+    "experiment-lab[rl]",
+    "experiment-lab[rl-vid]",
+]
+
+[project.urls]
+Repository = "https://github.com/rishavb123/EMMA"
+
+[project.optional-dependencies]
+all = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["emma*"]
+namespaces = false
