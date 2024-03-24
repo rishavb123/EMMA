@@ -1,0 +1,47 @@
+experiment_name: door_key_change_experiment
+env_config:
+    env_id: emma.envs.color_door_key.ColoredDoorKeyEnv
+    door_color: red
+    correct_key_color:
+        - red
+        - blue
+    key_colors:
+        - [red, blue]
+model_cls: emma.poi_exploration.POIInstrinsicRewardPPO
+poi_model:
+    _target_: emma.poi_field.ZeroPOIField
+model_kwargs:
+    learning_rate: 0.001
+    n_steps: 2048
+    batch_size: 256
+    n_epochs: 4
+    gamma: 0.99
+    gae_lambda: 0.95
+    clip_range: 0.2
+    ent_coef: 0.01
+    vf_coef: 0.5
+    max_grad_norm: 0.5
+wrapper_cls_lst:
+    - minigrid.wrappers.ImgObsWrapper
+model_trainer:
+    _target_: emma.envs.color_door_key.CorrectKeyDistancePredictor
+    model:
+        _target_: experiment_lab.common.networks.create_mlp_network
+        layer_sizes:
+            - 147
+            - 50
+            - 10
+            - 1
+        layer_activations:
+            _target_: torch.nn.ReLU
+        final_activation:
+            _target_: torch.nn.ReLU
+external_model_batch_size: 64
+total_time_steps: 8000000
+transfer_steps:
+    - 5000000
+video_freq: 100000
+video_length: 200
+defaults:
+    - base_emma
+    - _self_

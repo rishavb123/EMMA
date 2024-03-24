@@ -1,0 +1,15 @@
+experiment_name: emma_experiment
+n_runs: 10
+n_envs: 5
+n_run_method: series
+seed: 0
+wandb:
+    project: emma
+    mode: disabled
+device: cuda
+log: true
+save_model: true
+record_policy_videos: true
+defaults:
+    - emma_config
+    - _self_
