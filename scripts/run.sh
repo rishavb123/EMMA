@@ -1,2 +1,2 @@
 #!/bin/bash
-run_rl --config-dir ./configs --config-name emma
+python emma/experiment.py $@
