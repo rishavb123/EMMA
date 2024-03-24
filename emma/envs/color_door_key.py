@@ -109,16 +109,25 @@ class ColoredDoorKeyEnv(MiniGridEnv):
 class CorrectKeyDistancePredictor(ExternalModelTrainer):
 
     def __init__(self, model: torch.nn.Module, device: str, lr: float = 0.001) -> None:
-        super().__init__(model=model, device=device)
-        self.optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        self.loss_f = torch.nn.MSELoss()
+        super().__init__(
+            model=model,
+            device=device,
+            loss_f=torch.nn.MSELoss(),
+            lr=lr,
+        )
 
-    def obs_to_model_inp(self, obs: Any) -> Any:
-        return obs
+    def rollout_to_model_input(
+        self,
+        env: VecEnv,
+        rollout_buffer_samples: RolloutBufferSamples,
+    ) -> torch.Tensor:
+        return rollout_buffer_samples.observations.flatten(start_dim=1)
 
-    def receive_rollout(
-        self, env: VecEnv, rollout_buffer_samples: RolloutBufferSamples
-    ):
+    def rollout_to_model_output(
+        self,
+        env: VecEnv,
+        rollout_buffer_samples: RolloutBufferSamples,
+    ) -> torch.Tensor:
         correct_key_color = env.get_attr("unwrapped")[0].correct_key_color
         batch_size, channels, width, height = rollout_buffer_samples.observations.shape
         obj_idxs = rollout_buffer_samples.observations[:, 0, :, :]
@@ -145,15 +154,4 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
 
             min_dists.append(min_dist)
 
-        inp = rollout_buffer_samples.observations.flatten(start_dim=1)
-        out = torch.tensor(min_dists, device=device)[:, None]
-
-        self.optimizer.zero_grad()
-
-        pred_out = self.model(inp)
-        loss = self.loss_f(out, pred_out)
-        loss.backward()
-
-        self.optimizer.step()
-
-        return loss.item()
+        return torch.tensor(min_dists, device=device)[:, None]

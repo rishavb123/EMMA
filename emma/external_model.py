@@ -18,18 +18,48 @@ class ExternalModelTrainer(abc.ABC):
 
     model: torch.nn.Module | None = None
 
-    def __init__(self, model: torch.nn.Module, device: str) -> None:
+    def __init__(
+        self, model: torch.nn.Module, device: str, loss_f: torch.nn.Module, lr: float = 0.001
+    ) -> None:
         self.model = model.to(device=device)
+        self.loss_f = loss_f
+        self.optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     @abc.abstractmethod
-    def obs_to_model_inp(self, obs: Any) -> Any:
+    def rollout_to_model_input(
+        self,
+        env: VecEnv,
+        rollout_buffer_samples: RolloutBufferSamples,
+    ) -> torch.Tensor:
         pass
 
     @abc.abstractmethod
+    def rollout_to_model_output(
+        self,
+        env: VecEnv,
+        rollout_buffer_samples: RolloutBufferSamples,
+    ) -> torch.Tensor:
+        pass
+
     def receive_rollout(
         self, env: VecEnv, rollout_buffer_samples: RolloutBufferSamples
     ):
-        pass
+        inp = self.rollout_to_model_input(
+            env=env, rollout_buffer_samples=rollout_buffer_samples
+        )
+        out = self.rollout_to_model_output(
+            env=env, rollout_buffer_samples=rollout_buffer_samples
+        )
+
+        self.optimizer.zero_grad()
+
+        pred_out = self.model(inp)
+        loss = self.loss_f(out, pred_out)
+        loss.backward()
+
+        self.optimizer.step()
+
+        return loss.item()
 
     def predict(self, obs: Any) -> Any:
         return ExternalModelTrainer.model(self.obs_to_model_inp(obs=obs))
