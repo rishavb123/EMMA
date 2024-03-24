@@ -41,11 +41,13 @@ class ExternalModelTrainerCallback(BaseCallback):
         self,
         model_trainer: ExternalModelTrainer,
         batch_size: int = 32,
+        wandb_mode: str | None = None,
         verbose: int = 0,
     ):
         super().__init__(verbose)
         self.model_trainer = model_trainer
         self.batch_size = batch_size
+        self.wandb_mode = wandb_mode
 
     def _on_step(self) -> bool:
         return super()._on_step()
@@ -74,8 +76,9 @@ class ExternalModelTrainerCallback(BaseCallback):
 
         av_loss = total_loss / count
         logger.info(f"Loss: {av_loss}")
-        wandb.log(
-            {
-                "external_model_loss": av_loss,
-            }
-        )
+        if self.wandb_mode != "disabled":
+            wandb.log(
+                {
+                    "external_model_loss": av_loss,
+                }
+            )
