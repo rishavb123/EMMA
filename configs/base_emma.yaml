@@ -5,7 +5,7 @@ n_run_method: series
 seed: 0
 wandb:
     project: emma
-    mode: disabled
+    # mode: disabled
 device: cuda
 log: true
 save_model: true
