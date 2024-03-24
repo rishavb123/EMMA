@@ -1,9 +1,20 @@
 from typing import Optional, Any, Dict, List, SupportsFloat
 
+import logging
+import gymnasium as gym
+from stable_baselines3.common.type_aliases import RolloutBufferSamples
+from stable_baselines3.common.vec_env import VecEnv
+import torch
+from minigrid.core.constants import COLOR_TO_IDX, OBJECT_TO_IDX
 from minigrid.core.grid import Grid
 from minigrid.core.world_object import Door, Goal, Key
 from minigrid.core.mission import MissionSpace
 from minigrid.minigrid_env import MiniGridEnv
+
+from emma.external_model import ExternalModelTrainer
+
+
+logger = logging.getLogger(__name__)
 
 
 class ColorDoor(Door):
@@ -93,3 +104,56 @@ class ColoredDoorKeyEnv(MiniGridEnv):
             self.place_obj(obj=Key(color=color), top=(0, 0), size=(splitIdx, height))
 
         self.mission = self._gen_mission()
+
+
+class CorrectKeyDistancePredictor(ExternalModelTrainer):
+
+    def __init__(self, model: torch.nn.Module, device: str, lr: float = 0.001) -> None:
+        super().__init__(model=model, device=device)
+        self.optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        self.loss_f = torch.nn.MSELoss()
+
+    def obs_to_model_inp(self, obs: Any) -> Any:
+        return obs
+
+    def receive_rollout(
+        self, env: VecEnv, rollout_buffer_samples: RolloutBufferSamples
+    ):
+        correct_key_color = env.get_attr("unwrapped")[0].correct_key_color
+        batch_size, channels, width, height = rollout_buffer_samples.observations.shape
+        obj_idxs = rollout_buffer_samples.observations[:, 0, :, :]
+        colors = rollout_buffer_samples.observations[:, 1, :, :]
+
+        device = rollout_buffer_samples.observations.device
+
+        min_dists = []
+
+        for batch_idx in range(batch_size):
+            mask = torch.logical_and(
+                obj_idxs[batch_idx] == OBJECT_TO_IDX["key"],
+                colors[batch_idx] == COLOR_TO_IDX[correct_key_color],
+            )
+            indices = mask.nonzero().to(dtype=torch.float32)
+            agent_pos = torch.tensor(
+                [width // 2, height - 1], dtype=torch.float32, device=device
+            )
+
+            if len(indices) > 0:
+                min_dist = min(torch.linalg.norm(idx - agent_pos) for idx in indices)
+            else:
+                min_dist = torch.tensor(width + height, device=device)
+
+            min_dists.append(min_dist)
+
+        inp = rollout_buffer_samples.observations.flatten(start_dim=1)
+        out = torch.tensor(min_dists, device=device)[:, None]
+
+        self.optimizer.zero_grad()
+
+        pred_out = self.model(inp)
+        loss = self.loss_f(out, pred_out)
+        loss.backward()
+
+        self.optimizer.step()
+
+        return loss.item()
