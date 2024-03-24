@@ -45,7 +45,7 @@ callback_kwargs_lst:
               final_activation:
                   _target_: torch.nn.Sigmoid
           device: mps
-          batch_size: 64
+      batch_size: 64
 total_time_steps: 8000000
 transfer_steps:
     - 5000000
