@@ -44,8 +44,9 @@ callback_kwargs_lst:
                   _target_: torch.nn.ReLU
               final_activation:
                   _target_: torch.nn.Sigmoid
-          device: mps
+          device: cuda
       batch_size: 64
+device: cuda
 total_time_steps: 8000000
 transfer_steps:
     - 5000000
