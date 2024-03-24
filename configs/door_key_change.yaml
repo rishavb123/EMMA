@@ -9,7 +9,7 @@ env_config:
         - [red, blue]
 model_cls: emma.poi_exploration.POIInstrinsicRewardPPO
 poi_model:
-    _target_: emma.poi_field.ZeroPOIField
+    _target_: emma.poi_field.LossPOIField
 model_kwargs:
     learning_rate: 0.001
     n_steps: 2048
@@ -21,6 +21,7 @@ model_kwargs:
     ent_coef: 0.01
     vf_coef: 0.5
     max_grad_norm: 0.5
+    beta: 0.001
 wrapper_cls_lst:
     - minigrid.wrappers.ImgObsWrapper
 model_trainer:

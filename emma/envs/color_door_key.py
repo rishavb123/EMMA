@@ -1,8 +1,7 @@
-from typing import Optional, Any, Dict, List, SupportsFloat
+from typing import Optional, Any, Dict, List
 
 import logging
-import gymnasium as gym
-from stable_baselines3.common.type_aliases import RolloutBufferSamples
+from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.vec_env import VecEnv
 import torch
 from minigrid.core.constants import COLOR_TO_IDX, OBJECT_TO_IDX
@@ -112,28 +111,35 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
         super().__init__(
             model=model,
             device=device,
-            loss_f=torch.nn.MSELoss(),
+            loss_type=torch.nn.MSELoss,
             lr=lr,
         )
 
     def rollout_to_model_input(
         self,
         env: VecEnv,
-        rollout_buffer_samples: RolloutBufferSamples,
+        rollout_buffer: RolloutBuffer,
     ) -> torch.Tensor:
-        return rollout_buffer_samples.observations.flatten(start_dim=1)
+        return (
+            rollout_buffer.to_torch(rollout_buffer.observations)
+            .flatten(end_dim=1)
+            .flatten(start_dim=1)
+        )
 
     def rollout_to_model_output(
         self,
         env: VecEnv,
-        rollout_buffer_samples: RolloutBufferSamples,
+        rollout_buffer: RolloutBuffer,
     ) -> torch.Tensor:
+        observations = rollout_buffer.to_torch(rollout_buffer.observations).flatten(
+            end_dim=1
+        )
         correct_key_color = env.get_attr("unwrapped")[0].correct_key_color
-        batch_size, channels, width, height = rollout_buffer_samples.observations.shape
-        obj_idxs = rollout_buffer_samples.observations[:, 0, :, :]
-        colors = rollout_buffer_samples.observations[:, 1, :, :]
+        batch_size, channels, width, height = observations.shape
+        obj_idxs = observations[:, 0, :, :]
+        colors = observations[:, 1, :, :]
 
-        device = rollout_buffer_samples.observations.device
+        device = observations.device
 
         min_dists = []
 

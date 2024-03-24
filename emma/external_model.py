@@ -1,4 +1,4 @@
-from typing import Any, Dict, SupportsFloat
+from typing import Any, Dict, SupportsFloat, Type
 
 import abc
 import gymnasium as gym
@@ -7,7 +7,7 @@ import torch
 import logging
 import wandb
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.type_aliases import RolloutBufferSamples
+from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.vec_env import VecEnv
 
 
@@ -19,17 +19,22 @@ class ExternalModelTrainer(abc.ABC):
     model: torch.nn.Module | None = None
 
     def __init__(
-        self, model: torch.nn.Module, device: str, loss_f: torch.nn.Module, lr: float = 0.001
+        self,
+        model: torch.nn.Module,
+        device: str,
+        loss_type: Type[torch.nn.Module],
+        lr: float = 0.001,
     ) -> None:
         self.model = model.to(device=device)
-        self.loss_f = loss_f
+        self.loss_type = loss_type
+        self.loss_f = self.loss_type()
         self.optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     @abc.abstractmethod
     def rollout_to_model_input(
         self,
         env: VecEnv,
-        rollout_buffer_samples: RolloutBufferSamples,
+        rollout_buffer: RolloutBuffer,
     ) -> torch.Tensor:
         pass
 
@@ -37,23 +42,23 @@ class ExternalModelTrainer(abc.ABC):
     def rollout_to_model_output(
         self,
         env: VecEnv,
-        rollout_buffer_samples: RolloutBufferSamples,
+        rollout_buffer: RolloutBuffer,
     ) -> torch.Tensor:
         pass
 
     def receive_rollout(
-        self, env: VecEnv, rollout_buffer_samples: RolloutBufferSamples
+        self, env: VecEnv, rollout_buffer: RolloutBuffer
     ):
         inp = self.rollout_to_model_input(
-            env=env, rollout_buffer_samples=rollout_buffer_samples
+            env=env, rollout_buffer=rollout_buffer
         )
         out = self.rollout_to_model_output(
-            env=env, rollout_buffer_samples=rollout_buffer_samples
+            env=env, rollout_buffer=rollout_buffer
         )
 
         self.optimizer.zero_grad()
 
-        pred_out = self.model(inp)
+        pred_out = self.predict(inp=inp)
         loss = self.loss_f(out, pred_out)
         loss.backward()
 
@@ -61,8 +66,8 @@ class ExternalModelTrainer(abc.ABC):
 
         return loss.item()
 
-    def predict(self, obs: Any) -> Any:
-        return ExternalModelTrainer.model(self.obs_to_model_inp(obs=obs))
+    def predict(self, inp: torch.Tensor) -> torch.Tensor:
+        return self.model(inp)
 
 
 class ExternalModelTrainerCallback(BaseCallback):
@@ -95,16 +100,10 @@ class ExternalModelTrainerCallback(BaseCallback):
         super()._on_rollout_end()
         env = self.model.get_env()
 
-        count = 0
-        total_loss = 0
+        av_loss = self.model_trainer.receive_rollout(
+            env=env, rollout_buffer=self.model.rollout_buffer
+        )
 
-        for rollout_data in self.model.rollout_buffer.get(self.batch_size):
-            total_loss += self.model_trainer.receive_rollout(
-                env=env, rollout_buffer_samples=rollout_data
-            )
-            count += 1
-
-        av_loss = total_loss / count
         logger.info(f"Loss: {av_loss}")
         if self.wandb_mode != "disabled":
             wandb.log(

@@ -1,10 +1,14 @@
 import abc
+import logging
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.buffers import RolloutBuffer
 
 from emma.poi_field import POIFieldModel
+
+
+logger = logging.getLogger(__name__)
 
 
 class POIPPO(PPO, abc.ABC):
@@ -44,8 +48,17 @@ class POIInstrinsicRewardPPO(POIPPO):
         if result:
             if self.poi_model is not None:
                 intrinsic_rewards = self.beta * self.poi_model.calculate_poi_values(
-                    rollout_buffer
+                    env=env,
+                    rollout_buffer=rollout_buffer,
                 )
+
+                logger.debug(
+                    f"Extrinsic Reward Mean: {self.rollout_buffer.rewards.mean()}"
+                )
+                logger.debug(
+                    f"Intrinsic Reward Mean: {self.beta} * {intrinsic_rewards.mean() / self.beta}"
+                )
+
                 self.rollout_buffer.rewards += intrinsic_rewards
             return True
         else:
