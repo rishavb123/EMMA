@@ -7,9 +7,9 @@ env_config:
         - blue
     key_colors:
         - [red, blue]
-model_cls: emma.poi_exploration.POIInstrinsicRewardPPO
 poi_model:
     _target_: emma.poi_field.LossPOIField
+model_cls: emma.poi_exploration.POIInstrinsicRewardPPO
 model_kwargs:
     learning_rate: 0.00075
     n_steps: 2048
@@ -22,9 +22,9 @@ model_kwargs:
     vf_coef: 0.5
     max_grad_norm: 0.5
     beta: 0.001
+policy_cls: stable_baselines3.ppo.MlpPolicy
 wrapper_cls_lst:
     - minigrid.wrappers.ImgObsWrapper
-    - gymnasium.wrappers.flatten_observation.FlattenObservation
 model_trainer:
     _target_: emma.envs.color_door_key.CorrectKeyDistancePredictor
     model:
