@@ -46,15 +46,9 @@ class ExternalModelTrainer(abc.ABC):
     ) -> torch.Tensor:
         pass
 
-    def receive_rollout(
-        self, env: VecEnv, rollout_buffer: RolloutBuffer
-    ):
-        inp = self.rollout_to_model_input(
-            env=env, rollout_buffer=rollout_buffer
-        )
-        out = self.rollout_to_model_output(
-            env=env, rollout_buffer=rollout_buffer
-        )
+    def receive_rollout(self, env: VecEnv, rollout_buffer: RolloutBuffer):
+        inp = self.rollout_to_model_input(env=env, rollout_buffer=rollout_buffer)
+        out = self.rollout_to_model_output(env=env, rollout_buffer=rollout_buffer)
 
         self.optimizer.zero_grad()
 
