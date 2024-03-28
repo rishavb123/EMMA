@@ -11,7 +11,7 @@ model_cls: emma.poi_exploration.POIInstrinsicRewardPPO
 poi_model:
     _target_: emma.poi_field.LossPOIField
 model_kwargs:
-    learning_rate: 0.001
+    learning_rate: 0.00075
     n_steps: 2048
     batch_size: 256
     n_epochs: 4
@@ -24,6 +24,7 @@ model_kwargs:
     beta: 0.001
 wrapper_cls_lst:
     - minigrid.wrappers.ImgObsWrapper
+    - gymnasium.wrappers.flatten_observation.FlattenObservation
 model_trainer:
     _target_: emma.envs.color_door_key.CorrectKeyDistancePredictor
     model:
