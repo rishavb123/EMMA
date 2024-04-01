@@ -31,7 +31,7 @@ class ZeroPOIField(POIFieldModel):
         return np.zeros_like(rollout_buffer.rewards)
 
 
-class LossPOIField(POIFieldModel):
+class LossPOIField(POIFieldModel):  # beta: 0.001 for correct key distance
 
     def __init__(self, external_model_trainer: ExternalModelTrainer) -> None:
         super().__init__(external_model_trainer)
@@ -60,7 +60,7 @@ class LossPOIField(POIFieldModel):
             )
 
 
-class MCDropoutPOIField(POIFieldModel):
+class MCDropoutPOIField(POIFieldModel):  # beta: 0.1 for correct key distance
 
     def __init__(
         self, external_model_trainer: ExternalModelTrainer, num_samples: int = 30
@@ -86,3 +86,34 @@ class MCDropoutPOIField(POIFieldModel):
                 .mean(axis=tuple(range(len(samples.shape) - 1))[1:])
                 .reshape(rollout_buffer.rewards.shape)
             )
+
+
+class ModelGradientPOIField(POIFieldModel):  # beta: 10 for correct key distance
+
+    def __init__(self, external_model_trainer: ExternalModelTrainer) -> None:
+        super().__init__(external_model_trainer)
+
+    def calculate_poi_values(
+        self, env: VecEnv, rollout_buffer: RolloutBuffer
+    ) -> np.ndarray:
+        model_inp = self.external_model_trainer.rollout_to_model_input(
+            env=env, rollout_buffer=rollout_buffer
+        )
+        self.external_model_trainer.model.train(mode=False)
+        model_out = self.external_model_trainer.predict(model_inp)
+
+        grad_lst = []
+
+        for i in range(model_out.shape[0]):
+            out = model_out[i].mean()
+            param_grads = torch.autograd.grad(
+                out,
+                list(self.external_model_trainer.model.parameters()),
+                retain_graph=True,
+            )
+            grad_mean = np.concatenate(
+                [grad.cpu().numpy().flatten() for grad in param_grads]
+            ).mean()
+            grad_lst.append(grad_mean)
+
+        return np.array(grad_lst).reshape(rollout_buffer.rewards.shape)
