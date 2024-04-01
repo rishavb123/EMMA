@@ -57,3 +57,31 @@ class LossPOIField(POIFieldModel):
                 .numpy()
                 .reshape(rollout_buffer.rewards.shape)
             )
+
+
+class MCDropoutPOIField(POIFieldModel):
+
+    def __init__(
+        self, external_model_trainer: ExternalModelTrainer, num_samples: int = 30
+    ) -> None:
+        super().__init__(external_model_trainer)
+        self.num_samples = num_samples
+
+    def calculate_poi_values(
+        self, env: VecEnv, rollout_buffer: RolloutBuffer
+    ) -> np.ndarray:
+        with torch.no_grad():
+            model_inp = self.external_model_trainer.rollout_to_model_input(
+                env=env, rollout_buffer=rollout_buffer
+            )
+            samples = []
+            self.external_model_trainer.model.train(mode=True)
+            for _ in range(self.num_samples):
+                model_out = self.external_model_trainer.predict(model_inp)
+                samples.append(model_out.cpu().numpy())
+            samples = np.array(samples)
+            return (
+                samples.std(axis=0)
+                .mean(axis=list(range(len(samples.shape)))[1:])
+                .reshape(rollout_buffer.rewards.shape)
+            )
