@@ -83,6 +83,6 @@ class MCDropoutPOIField(POIFieldModel):
             samples = np.array(samples)
             return (
                 samples.std(axis=0)
-                .mean(axis=tuple(range(len(samples.shape)))[1:])
+                .mean(axis=tuple(range(len(samples.shape) - 1))[1:])
                 .reshape(rollout_buffer.rewards.shape)
             )
