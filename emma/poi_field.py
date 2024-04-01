@@ -43,6 +43,7 @@ class LossPOIField(POIFieldModel):
         self, env: VecEnv, rollout_buffer: RolloutBuffer
     ) -> np.ndarray:
         with torch.no_grad():
+            self.external_model_trainer.model.train(mode=False)
             model_inp = self.external_model_trainer.rollout_to_model_input(
                 env=env, rollout_buffer=rollout_buffer
             )

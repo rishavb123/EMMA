@@ -52,6 +52,7 @@ class ExternalModelTrainer(abc.ABC):
 
         self.optimizer.zero_grad()
 
+        self.model.train(mode=True)
         pred_out = self.predict(inp=inp)
         loss = self.loss_f(out, pred_out)
         loss.backward()
