@@ -28,7 +28,7 @@ class ExternalModelTrainer(abc.ABC):
         self.dtype = dtype
         self.model = model.to(device=device, dtype=dtype)
         self.loss_type = loss_type
-        self.loss_f = self.loss_type()
+        self.loss_f = self.loss_type().to(device=device, dtype=dtype)
         self.optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     @abc.abstractmethod
