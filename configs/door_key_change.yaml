@@ -25,6 +25,7 @@ model_kwargs:
 policy_cls: stable_baselines3.ppo.MlpPolicy
 wrapper_cls_lst:
     - minigrid.wrappers.ImgObsWrapper
+    - gymnasium.wrappers.FlattenObservation
 model_trainer:
     _target_: emma.envs.color_door_key.CorrectKeyDistancePredictor
     model:

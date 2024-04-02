@@ -135,7 +135,14 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
             end_dim=1
         )
         correct_key_color = env.get_attr("unwrapped")[0].correct_key_color
-        batch_size, channels, width, height = observations.shape
+        if len(observations.shape) == 2:
+            batch_size = observations.shape[0]
+            channels = 3
+            width = int((observations.shape[1] // 3) ** 0.5)
+            height = width
+            observations = observations.reshape((batch_size, channels, width, height))
+        else:
+            batch_size, channels, width, height = observations.shape
         obj_idxs = observations[:, 0, :, :]
         colors = observations[:, 1, :, :]
 
