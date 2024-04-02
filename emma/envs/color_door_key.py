@@ -141,8 +141,10 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
             width = int((observations.shape[1] // 3) ** 0.5)
             height = width
             observations = observations.reshape((batch_size, channels, width, height))
-        else:
+        elif len(observations.shape) == 4:
             batch_size, channels, width, height = observations.shape
+        else:
+            raise ValueError(f"Unknown observation shape: {observations.shape}")
         obj_idxs = observations[:, 0, :, :]
         colors = observations[:, 1, :, :]
 
