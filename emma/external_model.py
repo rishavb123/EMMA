@@ -22,8 +22,11 @@ class ExternalModelTrainer(abc.ABC):
         device: str,
         loss_type: Type[torch.nn.Module],
         lr: float = 0.001,
+        dtype=torch.float32,
     ) -> None:
-        self.model = model.to(device=device)
+        self.device = device
+        self.dtype = dtype
+        self.model = model.to(device=device, dtype=dtype)
         self.loss_type = loss_type
         self.loss_f = self.loss_type()
         self.optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -45,8 +48,8 @@ class ExternalModelTrainer(abc.ABC):
         pass
 
     def receive_rollout(self, env: VecEnv, rollout_buffer: RolloutBuffer):
-        inp = self.rollout_to_model_input(env=env, rollout_buffer=rollout_buffer)
-        out = self.rollout_to_model_output(env=env, rollout_buffer=rollout_buffer)
+        inp = self.rollout_to_model_input(env=env, rollout_buffer=rollout_buffer).to(device=self.device, dtype=self.dtype)
+        out = self.rollout_to_model_output(env=env, rollout_buffer=rollout_buffer).to(device=self.device, dtype=self.dtype)
 
         self.optimizer.zero_grad()
 

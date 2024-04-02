@@ -107,12 +107,15 @@ class ColoredDoorKeyEnv(MiniGridEnv):
 
 class CorrectKeyDistancePredictor(ExternalModelTrainer):
 
-    def __init__(self, model: torch.nn.Module, device: str, lr: float = 0.001) -> None:
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        device: str,
+        lr: float = 0.001,
+        dtype=torch.float32,
+    ) -> None:
         super().__init__(
-            model=model,
-            device=device,
-            loss_type=torch.nn.MSELoss,
-            lr=lr,
+            model=model, device=device, loss_type=torch.nn.MSELoss, lr=lr, dtype=dtype
         )
 
     def rollout_to_model_input(
@@ -148,8 +151,6 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
         obj_idxs = observations[:, 0, :, :]
         colors = observations[:, 1, :, :]
 
-        device = observations.device
-
         min_dists = []
 
         for batch_idx in range(batch_size):
@@ -157,16 +158,18 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
                 obj_idxs[batch_idx] == OBJECT_TO_IDX["key"],
                 colors[batch_idx] == COLOR_TO_IDX[correct_key_color],
             )
-            indices = mask.nonzero().to(dtype=torch.float32)
+            indices = mask.nonzero().to(device=self.device, dtype=self.dtype)
             agent_pos = torch.tensor(
-                [width // 2, height - 1], dtype=torch.float32, device=device
+                [width // 2, height - 1], device=self.device, dtype=self.dtype
             )
 
             if len(indices) > 0:
                 min_dist = min(torch.linalg.norm(idx - agent_pos) for idx in indices)
             else:
-                min_dist = torch.tensor(width + height, device=device)
+                min_dist = torch.tensor(
+                    width + height, device=self.device, dtype=self.dtype
+                )
 
             min_dists.append(min_dist)
 
-        return torch.tensor(min_dists, device=device)[:, None]
+        return torch.tensor(min_dists, device=self.device, dtype=self.dtype)[:, None]
