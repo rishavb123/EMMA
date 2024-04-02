@@ -1,0 +1,9 @@
+wandb:
+    mode: disabled
+record_policy_videos: false
+hydra:
+    verbose: true
+device: mps
+defaults:
+    - door_key_change
+    - _self_
