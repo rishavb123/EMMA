@@ -22,6 +22,8 @@ model_kwargs:
     vf_coef: 0.5
     max_grad_norm: 0.5
     beta: 0.001
+    infos_to_save:
+        correct_key_color_idx: []
 policy_cls: stable_baselines3.ppo.MlpPolicy
 wrapper_cls_lst:
     - minigrid.wrappers.ImgObsWrapper

@@ -4,6 +4,8 @@ import logging
 from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.vec_env import VecEnv
 import torch
+import numpy as np
+
 from minigrid.core.constants import COLOR_TO_IDX, OBJECT_TO_IDX
 from minigrid.core.grid import Grid
 from minigrid.core.world_object import Door, Goal, Key
@@ -69,7 +71,9 @@ class ColoredDoorKeyEnv(MiniGridEnv):
         return "use the correct key to open the door and get to the goal"
 
     def step(self, action):
-        return super().step(action)
+        obs, reward, terminated, truncated, info = super().step(action)
+        info["correct_key_color_idx"] = COLOR_TO_IDX[self.correct_key_color]
+        return obs, reward, terminated, truncated, info
 
     def _gen_grid(self, width: int, height: int):
         # Create an empty grid
@@ -122,6 +126,7 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
         self,
         env: VecEnv,
         rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
     ) -> torch.Tensor:
         return (
             rollout_buffer.to_torch(rollout_buffer.observations)
@@ -133,11 +138,14 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
         self,
         env: VecEnv,
         rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
     ) -> torch.Tensor:
         observations = rollout_buffer.to_torch(rollout_buffer.observations).flatten(
             end_dim=1
         )
-        correct_key_color = env.get_attr("unwrapped")[0].correct_key_color
+        correct_key_color_idx = rollout_buffer.to_torch(
+            info_buffer["correct_key_color_idx"]
+        ).flatten(end_dim=1)
         if len(observations.shape) == 2:
             batch_size = observations.shape[0]
             channels = 3
@@ -156,7 +164,7 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
         for batch_idx in range(batch_size):
             mask = torch.logical_and(
                 obj_idxs[batch_idx] == OBJECT_TO_IDX["key"],
-                colors[batch_idx] == COLOR_TO_IDX[correct_key_color],
+                colors[batch_idx] == correct_key_color_idx[batch_idx],
             )
             indices = mask.nonzero().to(device=self.device, dtype=self.dtype)
             agent_pos = torch.tensor(

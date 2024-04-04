@@ -30,7 +30,10 @@ class POIPPO(PPO, abc.ABC):
 
     def _reset_info_buffer(self):
         self.info_buffer = {
-            k: np.zeros(shape=(self.n_steps, self.n_envs, *self.infos_to_save[k]))
+            k: np.zeros(
+                shape=(self.n_steps, self.n_envs, *self.infos_to_save[k]),
+                dtype=np.float32,
+            )
             for k in self.infos_to_save
         }
 
@@ -49,7 +52,7 @@ class POIPPO(PPO, abc.ABC):
     ) -> None:
         super()._update_info_buffer(infos, dones)
         for k in self.info_buffer:
-            self.info_buffer[k][self.rollout_buffer.pos, :] = [
+            self.info_buffer[k][self.rollout_buffer.pos] = [
                 info.get(k, 0) for info in infos
             ]
 
@@ -86,6 +89,7 @@ class POIInstrinsicRewardPPO(POIPPO):
                 intrinsic_rewards = self.beta * self.poi_model.calculate_poi_values(
                     env=env,
                     rollout_buffer=rollout_buffer,
+                    info_buffer=self.info_buffer,
                 )
 
                 logger.debug(

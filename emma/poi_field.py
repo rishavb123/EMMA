@@ -1,3 +1,5 @@
+from typing import Dict
+
 import abc
 from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.vec_env import VecEnv
@@ -15,7 +17,10 @@ class POIFieldModel(abc.ABC):
 
     @abc.abstractmethod
     def calculate_poi_values(
-        self, env: VecEnv, rollout_buffer: RolloutBuffer
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
     ) -> np.ndarray:
         pass
 
@@ -26,7 +31,10 @@ class ZeroPOIField(POIFieldModel):
         super().__init__(external_model_trainer)
 
     def calculate_poi_values(
-        self, env: VecEnv, rollout_buffer: RolloutBuffer
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
     ) -> np.ndarray:
         return np.zeros_like(rollout_buffer.rewards)
 
@@ -40,15 +48,18 @@ class LossPOIField(POIFieldModel):  # beta: 0.001 for correct key distance
         )
 
     def calculate_poi_values(
-        self, env: VecEnv, rollout_buffer: RolloutBuffer
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
     ) -> np.ndarray:
         with torch.no_grad():
             self.external_model_trainer.model.train(mode=False)
             model_inp = self.external_model_trainer.rollout_to_model_input(
-                env=env, rollout_buffer=rollout_buffer
+                env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
             )
             gt_out = self.external_model_trainer.rollout_to_model_output(
-                env=env, rollout_buffer=rollout_buffer
+                env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
             )
             model_out = self.external_model_trainer.predict(model_inp)
 
@@ -69,11 +80,14 @@ class MCDropoutPOIField(POIFieldModel):  # beta: 0.1 for correct key distance
         self.num_samples = num_samples
 
     def calculate_poi_values(
-        self, env: VecEnv, rollout_buffer: RolloutBuffer
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
     ) -> np.ndarray:
         with torch.no_grad():
             model_inp = self.external_model_trainer.rollout_to_model_input(
-                env=env, rollout_buffer=rollout_buffer
+                env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
             )
             samples = []
             self.external_model_trainer.model.train(mode=True)
@@ -94,10 +108,13 @@ class ModelGradientPOIField(POIFieldModel):  # beta: 10 for correct key distance
         super().__init__(external_model_trainer)
 
     def calculate_poi_values(
-        self, env: VecEnv, rollout_buffer: RolloutBuffer
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
     ) -> np.ndarray:
         model_inp = self.external_model_trainer.rollout_to_model_input(
-            env=env, rollout_buffer=rollout_buffer
+            env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
         )
         self.external_model_trainer.model.train(mode=False)
         model_out = self.external_model_trainer.predict(model_inp)

@@ -1,9 +1,11 @@
-from typing import Type
+from typing import Dict, Type
 
 import abc
 import torch
 import logging
 import wandb
+import numpy as np
+
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.vec_env import VecEnv
@@ -36,6 +38,7 @@ class ExternalModelTrainer(abc.ABC):
         self,
         env: VecEnv,
         rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
     ) -> torch.Tensor:
         pass
 
@@ -44,12 +47,22 @@ class ExternalModelTrainer(abc.ABC):
         self,
         env: VecEnv,
         rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
     ) -> torch.Tensor:
         pass
 
-    def receive_rollout(self, env: VecEnv, rollout_buffer: RolloutBuffer):
-        inp = self.rollout_to_model_input(env=env, rollout_buffer=rollout_buffer).to(device=self.device, dtype=self.dtype)
-        out = self.rollout_to_model_output(env=env, rollout_buffer=rollout_buffer).to(device=self.device, dtype=self.dtype)
+    def receive_rollout(
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
+    ) -> None:
+        inp = self.rollout_to_model_input(
+            env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
+        ).to(device=self.device, dtype=self.dtype)
+        out = self.rollout_to_model_output(
+            env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
+        ).to(device=self.device, dtype=self.dtype)
 
         self.optimizer.zero_grad()
 
@@ -97,7 +110,9 @@ class ExternalModelTrainerCallback(BaseCallback):
         env = self.model.get_env()
 
         av_loss = self.model_trainer.receive_rollout(
-            env=env, rollout_buffer=self.model.rollout_buffer
+            env=env,
+            rollout_buffer=self.model.rollout_buffer,
+            info_buffer=self.model.info_buffer,
         )
 
         logger.info(f"Loss: {av_loss}")
