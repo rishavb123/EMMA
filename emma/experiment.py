@@ -30,32 +30,25 @@ class EMMAConfig(RLConfig):
         )
 
         if self.callback_cls_lst is None:
-            self.callback_cls_lst = ["emma.external_model.ExternalModelTrainerCallback"]
-        else:
-            self.callback_cls_lst.insert(
-                0, "emma.external_model.ExternalModelTrainerCallback"
-            )
+            self.callback_cls_lst = []
+        self.callback_cls_lst.insert(
+            0, "emma.external_model.ExternalModelTrainerCallback"
+        )
 
         if self.callback_kwargs_lst is None:
-            self.callback_kwargs_lst = [
-                {
-                    "model_trainer": model_trainer,
-                    "batch_size": self.external_model_batch_size,
-                }
-            ]
-        else:
-            self.callback_kwargs_lst.insert(
-                0,
-                {
-                    "model_trainer": model_trainer,
-                    "batch_size": self.external_model_batch_size,
-                    "wandb_mode": (
-                        self.wandb["mode"]
-                        if self.wandb is not None and "mode" in self.wandb
-                        else (None if self.wandb is not None else "disabled")
-                    ),
-                },
-            )
+            self.callback_kwargs_lst = []
+        self.callback_kwargs_lst.insert(
+            0,
+            {
+                "model_trainer": model_trainer,
+                "batch_size": self.external_model_batch_size,
+                "wandb_mode": (
+                    self.wandb["mode"]
+                    if self.wandb is not None and "mode" in self.wandb
+                    else (None if self.wandb is not None else "disabled")
+                ),
+            },
+        )
 
         if self.model_kwargs is None:
             self.model_kwargs = {"poi_model": instantiated_poi_model}
