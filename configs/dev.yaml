@@ -5,5 +5,5 @@ hydra:
     verbose: true
 device: mps
 defaults:
-    - poi_loss
+    - poi_disagreement
     - _self_
