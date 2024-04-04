@@ -5,6 +5,7 @@ from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.vec_env import VecEnv
 import numpy as np
 import torch
+from torch import nn
 
 from emma.external_model import ExternalModelTrainer
 
@@ -61,7 +62,7 @@ class LossPOIField(POIFieldModel):  # beta: 0.001 for correct key distance
             gt_out = self.external_model_trainer.rollout_to_model_output(
                 env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
             )
-            model_out = self.external_model_trainer.predict(model_inp)
+            model_out = self.external_model_trainer.model(model_inp)
 
             return (
                 self.unaggregated_loss_f(gt_out, model_out)
@@ -69,6 +70,37 @@ class LossPOIField(POIFieldModel):  # beta: 0.001 for correct key distance
                 .numpy()
                 .reshape(rollout_buffer.rewards.shape)
             )
+
+
+class MCModule(nn.Module):
+
+    def __init__(self, inner_module: nn.Module, num_samples: int = 30) -> None:
+        super().__init__()
+        self.inner_module = inner_module
+        self.num_samples = num_samples
+
+    def generate_samples(self, x: torch.Tensor):
+        self.inner_module.train(mode=True)
+        outputs = []
+
+        for _ in range(self.num_samples):
+            outputs.append(self.inner_module.forward(x))
+
+        return torch.stack(outputs)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.generate_samples(x).mean(dim=0)
+
+    def uncertainty_estimate(self, x: torch.Tensor) -> torch.Tensor:
+        stddevs = self.generate_samples(x).std(dim=0)
+        return stddevs.mean(dim=tuple(range(len(stddevs.shape)))[1:])
+
+    def forward_and_uncertainty_estimate(self, x: torch.Tensor) -> torch.Tensor:
+        samples = self.generate_samples(x)
+        stddevs = samples.std(dim=0)
+        return samples.mean(dim=0), stddevs.mean(
+            dim=tuple(range(len(stddevs.shape)))[1:]
+        )
 
 
 class MCDropoutPOIField(POIFieldModel):  # beta: 0.1 for correct key distance
@@ -89,17 +121,10 @@ class MCDropoutPOIField(POIFieldModel):  # beta: 0.1 for correct key distance
             model_inp = self.external_model_trainer.rollout_to_model_input(
                 env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
             )
-            samples = []
-            self.external_model_trainer.model.train(mode=True)
-            for _ in range(self.num_samples):
-                model_out = self.external_model_trainer.predict(model_inp)
-                samples.append(model_out.cpu().numpy())
-            samples = np.array(samples)
-            return (
-                samples.std(axis=0)
-                .mean(axis=tuple(range(len(samples.shape) - 1))[1:])
-                .reshape(rollout_buffer.rewards.shape)
+            uncertainty: torch.Tensor = (
+                self.external_model_trainer.model.uncertainty_estimate(model_inp)
             )
+            return uncertainty.cpu().numpy().reshape(rollout_buffer.rewards.shape)
 
 
 class ModelGradientPOIField(POIFieldModel):  # beta: 10 for correct key distance
@@ -117,7 +142,7 @@ class ModelGradientPOIField(POIFieldModel):  # beta: 10 for correct key distance
             env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
         )
         self.external_model_trainer.model.train(mode=False)
-        model_out = self.external_model_trainer.predict(model_inp)
+        model_out = self.external_model_trainer.model(model_inp)
 
         grad_lst = []
 
