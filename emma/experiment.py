@@ -129,6 +129,6 @@ if __name__ == "__main__":
         experiment_cls=RLExperiment,
         config_cls=EMMAConfig,
         register_configs=register_configs,
-        config_name="door_key_change",
+        config_name="key_prediction",
         config_path="./configs",
     )
