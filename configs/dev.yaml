@@ -5,5 +5,5 @@ hydra:
     verbose: true
 device: mps
 defaults:
-    - door_key_change
+    - poi_loss
     - _self_

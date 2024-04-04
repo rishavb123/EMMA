@@ -5,7 +5,6 @@ from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.vec_env import VecEnv
 import numpy as np
 import torch
-from torch import nn
 
 from emma.external_model import ExternalModelTrainer
 
@@ -40,7 +39,7 @@ class ZeroPOIField(POIFieldModel):
         return np.zeros_like(rollout_buffer.rewards)
 
 
-class LossPOIField(POIFieldModel):  # beta: 0.001 for correct key distance
+class LossPOIField(POIFieldModel):
 
     def __init__(self, external_model_trainer: ExternalModelTrainer) -> None:
         super().__init__(external_model_trainer)
@@ -72,38 +71,7 @@ class LossPOIField(POIFieldModel):  # beta: 0.001 for correct key distance
             )
 
 
-class MCModule(nn.Module):
-
-    def __init__(self, inner_module: nn.Module, num_samples: int = 30) -> None:
-        super().__init__()
-        self.inner_module = inner_module
-        self.num_samples = num_samples
-
-    def generate_samples(self, x: torch.Tensor):
-        self.inner_module.train(mode=True)
-        outputs = []
-
-        for _ in range(self.num_samples):
-            outputs.append(self.inner_module.forward(x))
-
-        return torch.stack(outputs)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.generate_samples(x).mean(dim=0)
-
-    def uncertainty_estimate(self, x: torch.Tensor) -> torch.Tensor:
-        stddevs = self.generate_samples(x).std(dim=0)
-        return stddevs.mean(dim=tuple(range(len(stddevs.shape)))[1:])
-
-    def forward_and_uncertainty_estimate(self, x: torch.Tensor) -> torch.Tensor:
-        samples = self.generate_samples(x)
-        stddevs = samples.std(dim=0)
-        return samples.mean(dim=0), stddevs.mean(
-            dim=tuple(range(len(stddevs.shape)))[1:]
-        )
-
-
-class DisagreementPOIField(POIFieldModel):  # beta: 0.1 for correct key distance
+class DisagreementPOIField(POIFieldModel):
 
     def __init__(
         self, external_model_trainer: ExternalModelTrainer, num_samples: int = 30
@@ -127,7 +95,7 @@ class DisagreementPOIField(POIFieldModel):  # beta: 0.1 for correct key distance
             return uncertainty.cpu().numpy().reshape(rollout_buffer.rewards.shape)
 
 
-class ModelGradientPOIField(POIFieldModel):  # beta: 10 for correct key distance
+class ModelGradientPOIField(POIFieldModel):
 
     def __init__(self, external_model_trainer: ExternalModelTrainer) -> None:
         super().__init__(external_model_trainer)

@@ -95,9 +95,7 @@ class EMMAConfig(RLConfig):
 
         if self.callback_cls_lst is None:
             self.callback_cls_lst = []
-        self.callback_cls_lst.insert(
-            0, "emma.external_model.ExternalModelTrainerCallback"
-        )
+        self.callback_cls_lst.insert(0, "emma.experiment.ExternalModelTrainerCallback")
 
         if self.callback_kwargs_lst is None:
             self.callback_kwargs_lst = []

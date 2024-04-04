@@ -2,6 +2,7 @@ from typing import Dict, Type
 
 import abc
 import torch
+from torch import nn
 import logging
 import numpy as np
 
@@ -11,6 +12,39 @@ from stable_baselines3.common.vec_env import VecEnv
 
 
 logger = logging.getLogger(__name__)
+
+
+class MCModule(nn.Module):
+
+    def __init__(
+        self, inner_module: nn.Module, *args, num_samples: int = 30, **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.inner_module = inner_module
+        self.num_samples = num_samples
+
+    def generate_samples(self, x: torch.Tensor):
+        self.inner_module.train(mode=True)
+        outputs = []
+
+        for _ in range(self.num_samples):
+            outputs.append(self.inner_module.forward(x))
+
+        return torch.stack(outputs)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.generate_samples(x).mean(dim=0)
+
+    def uncertainty_estimate(self, x: torch.Tensor) -> torch.Tensor:
+        stddevs = self.generate_samples(x).std(dim=0)
+        return stddevs.mean(dim=tuple(range(len(stddevs.shape)))[1:])
+
+    def forward_and_uncertainty_estimate(self, x: torch.Tensor) -> torch.Tensor:
+        samples = self.generate_samples(x)
+        stddevs = samples.std(dim=0)
+        return samples.mean(dim=0), stddevs.mean(
+            dim=tuple(range(len(stddevs.shape)))[1:]
+        )
 
 
 class ExternalModelTrainer(abc.ABC):
