@@ -103,7 +103,7 @@ class MCModule(nn.Module):
         )
 
 
-class MCDropoutPOIField(POIFieldModel):  # beta: 0.1 for correct key distance
+class DisagreementPOIField(POIFieldModel):  # beta: 0.1 for correct key distance
 
     def __init__(
         self, external_model_trainer: ExternalModelTrainer, num_samples: int = 30
