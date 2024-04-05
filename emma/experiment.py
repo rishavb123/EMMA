@@ -82,9 +82,13 @@ class ExternalModelTrainerCallback(BaseCallback):
         ):  # TODO: this code messes some things up for the videos, and the transfer timesteps count as it calls step in the env
 
             if self.random_eval_model is None:
-                self.random_eval_model = self.model.__class__(
+
+                self.cur_idx = env.get_attr("env_idx")[0]
+                self.eval_env = copy.deepcopy(env.get_attr("cur_env")[0])
+
+                self.random_eval_model = POIPPO(
                     policy=self.model.policy_class,
-                    env=env,
+                    env=self.eval_env,
                     learning_rate=0,
                     n_steps=self.n_eval_steps,
                     gamma=self.model.gamma,
@@ -97,21 +101,28 @@ class ExternalModelTrainerCallback(BaseCallback):
                     max_grad_norm=self.model.max_grad_norm,
                     poi_model=self.model.poi_model,
                     infos_to_save=self.model.infos_to_save,
-                )
-                _, self.random_eval_callback = self.random_eval_model._setup_learn(
-                    self.n_eval_steps, None, False
+                    device=self.model.device,
                 )
             else:
                 self.random_eval_model._setup_model()
+            
+            self.random_eval_model._last_obs = None
+            _, random_eval_callback = self.random_eval_model._setup_learn(
+                self.n_eval_steps, None, False
+            )
 
-            self.random_eval_model._last_obs = self.model._last_obs
+            cur_idx = env.get_attr("env_idx")[0]
+            if cur_idx != self.cur_idx:
+                self.cur_idx = cur_idx
+                self.eval_env = copy.deepcopy(env.get_attr("cur_env")[0])
+                self.random_eval_model.set_env(self.eval_env)
+
             self.random_eval_model.collect_rollouts(
-                env,
-                self.random_eval_callback,
+                self.random_eval_model.env,
+                random_eval_callback,
                 self.random_eval_model.rollout_buffer,
                 self.n_eval_steps,
             )
-            self.model._last_obs = self.random_eval_model._last_obs
 
             eval_av_loss = self.model_trainer.calc_loss(
                 env=env,
@@ -145,7 +156,7 @@ class EMMAConfig(RLConfig):
 
     model_trainer: Dict[str, Any] = MISSING
     external_model_batch_size: int = 64
-    n_eval_steps: int = 0
+    n_eval_steps: int = 1280
 
     poi_model: Dict[str, Any] = field(
         default_factory=lambda: {"_target_": "emma.poi_field.ZeroPOIField"}
