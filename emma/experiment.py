@@ -60,6 +60,8 @@ class ExternalModelTrainerCallback(BaseCallback):
 
         env = self.model.get_env()
 
+        self.model_trainer.set_agent(self.model)
+
         av_loss = self.model_trainer.receive_rollout(
             env=env,
             rollout_buffer=self.model.rollout_buffer,
