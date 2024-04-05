@@ -122,18 +122,6 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
             model=model, device=device, loss_type=torch.nn.MSELoss, lr=lr, dtype=dtype
         )
 
-    def rollout_to_model_input(
-        self,
-        env: VecEnv,
-        rollout_buffer: RolloutBuffer,
-        info_buffer: Dict[str, np.ndarray],
-    ) -> torch.Tensor:
-        return (
-            rollout_buffer.to_torch(rollout_buffer.observations)
-            .flatten(end_dim=1)
-            .flatten(start_dim=1)
-        )
-
     def rollout_to_model_output(
         self,
         env: VecEnv,

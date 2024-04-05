@@ -94,6 +94,7 @@ class DisagreementPOIField(POIFieldModel):
             uncertainty: torch.Tensor = (
                 self.external_model_trainer.model.uncertainty_estimate(model_inp)
             )
+
             return uncertainty.cpu().numpy().reshape(rollout_buffer.rewards.shape)
 
 
