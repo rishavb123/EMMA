@@ -1,4 +1,4 @@
-from typing import Dict, Type
+from typing import Any, Dict, List, Tuple, Type
 
 import abc
 import torch
@@ -105,5 +105,26 @@ class ExternalModelTrainer(abc.ABC):
         loss.backward()
 
         self.optimizer.step()
+
+        return loss.item()
+
+    def calc_loss(
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
+    ):
+        inp = self.rollout_to_model_input(
+            env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
+        ).to(device=self.device, dtype=self.dtype)
+        out = self.rollout_to_model_output(
+            env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
+        ).to(device=self.device, dtype=self.dtype)
+
+        with torch.no_grad():
+            self.model.train(mode=False)
+            pred_out = self.model(inp)
+
+            loss = self.loss_f(out, pred_out)
 
         return loss.item()

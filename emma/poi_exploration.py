@@ -25,7 +25,7 @@ class POIPPO(PPO, abc.ABC):
     ):
         super().__init__(*args, **kwargs)
         self.poi_model = poi_model
-        self.infos_to_save = infos_to_save
+        self.infos_to_save = [] if infos_to_save is None else infos_to_save
         self._reset_info_buffer()
 
     def _reset_info_buffer(self):
