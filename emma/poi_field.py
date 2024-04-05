@@ -39,7 +39,9 @@ class ZeroPOIField(POIFieldModel):
         return np.zeros_like(rollout_buffer.rewards)
 
 
-class LossPOIField(POIFieldModel):
+class LossPOIField(
+    POIFieldModel
+):  # Note that this is not really a POI field since it requires the ground truth model outputs
 
     def __init__(self, external_model_trainer: ExternalModelTrainer) -> None:
         super().__init__(external_model_trainer)
