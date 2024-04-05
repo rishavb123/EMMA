@@ -105,17 +105,17 @@ class ExternalModelTrainerCallback(BaseCallback):
                 )
             else:
                 self.random_eval_model._setup_model()
-            
-            self.random_eval_model._last_obs = None
-            _, random_eval_callback = self.random_eval_model._setup_learn(
-                self.n_eval_steps, None, False
-            )
 
             cur_idx = env.get_attr("env_idx")[0]
             if cur_idx != self.cur_idx:
                 self.cur_idx = cur_idx
                 self.eval_env = copy.deepcopy(env.get_attr("cur_env")[0])
                 self.random_eval_model.set_env(self.eval_env)
+
+            self.random_eval_model._last_obs = None
+            _, random_eval_callback = self.random_eval_model._setup_learn(
+                self.n_eval_steps, None, True
+            )
 
             self.random_eval_model.collect_rollouts(
                 self.random_eval_model.env,
