@@ -213,7 +213,7 @@ class ExternalModelTrainer(abc.ABC):
         env: VecEnv,
         rollout_buffer: RolloutBuffer,
         info_buffer: Dict[str, np.ndarray],
-    ) -> None:
+    ) -> np.ndarray:
         if self.model is None:
             raise Exception("Model is not set!")
 
@@ -299,7 +299,17 @@ class PolicyTrainer(ExternalModelTrainer):
         env: VecEnv,
         rollout_buffer: RolloutBuffer,
         info_buffer: Dict[str, np.ndarray],
-    ) -> None:
+    ) -> np.ndarray:
         # Policy is already being trained by stable baselines
         # Don't need to do it here
-        pass
+        return np.array(0)
+
+    def calc_loss(
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
+    ):
+        # Policy is handled by stable baselines
+        # Further, better eval is the mean rewards that are already logged
+        return np.array(0)

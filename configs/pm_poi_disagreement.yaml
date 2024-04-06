@@ -1,8 +1,8 @@
-experiment_name: disagreement_ir_key_prediction_door_key_change
+experiment_name: disagreement_ir_policy_door_key_change
 poi_model:
     _target_: emma.poi_field.DisagreementPOIField
 model_kwargs:
     beta: 0.1
 defaults:
-    - expl_intrinsic_reward
+    - pm_expl_intrinsic_reward
     - _self_

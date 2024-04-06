@@ -4,5 +4,5 @@ poi_model:
 model_kwargs:
     beta: 0.001
 defaults:
-    - expl_intrinsic_reward
+    - kp_expl_intrinsic_reward
     - _self_

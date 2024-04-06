@@ -1,0 +1,8 @@
+experiment_name: loss_ir_policy_door_key_change
+poi_model:
+    _target_: emma.poi_field.LossPOIField
+model_kwargs:
+    beta: 0.001
+defaults:
+    - pm_expl_intrinsic_reward
+    - _self_
