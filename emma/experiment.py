@@ -1,9 +1,11 @@
 from typing import Any, Dict
 from dataclasses import dataclass, field
+from experiment_lab.core.base_config import BaseConfig
 import hydra
 from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING
 import logging
+from pandas import DataFrame
 import wandb
 import copy
 
@@ -11,8 +13,7 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3 import PPO
 
 from experiment_lab.experiments.rl import RLConfig, RLExperiment
-from experiment_lab.experiments.rl.environment import GeneralVecEnv
-from experiment_lab.core import run_experiment
+from experiment_lab.core import run_experiment, BaseAnalysis
 
 from emma.poi_field import POIFieldModel
 from emma.poi_exploration import POIPPO
@@ -201,6 +202,17 @@ class EMMAConfig(RLConfig):
         else:
             self.model_kwargs["poi_model"] = instantiated_poi_model
 
+class EMMAAnalysis(BaseAnalysis):
+
+    def __init__(self, cfg: EMMAConfig) -> None:
+        self.cfg = cfg
+
+    def analyze(self, df: DataFrame, configs: Dict[str, Dict[str, Any]]) -> Any:
+        print(df.head())
+        import pdb
+        pdb.set_trace()
+
+
 
 def register_configs():
     cs = ConfigStore.instance()
@@ -211,6 +223,7 @@ if __name__ == "__main__":
     run_experiment(
         experiment_cls=RLExperiment,
         config_cls=EMMAConfig,
+        analysis_cls=EMMAAnalysis,
         register_configs=register_configs,
         config_name="key_prediction",
         config_path="./configs",

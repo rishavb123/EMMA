@@ -10,6 +10,13 @@ device: cuda
 log: true
 save_model: true
 record_policy_videos: true
+analysis:
+    wandb_keys: 
+        - global_step
+        - external_model_train/av_poi_per_step
+        - external_model_train/av_external_model_loss
+        - rollout/ep_rew_mean
+        - rollout/ep_len_mean
 defaults:
     - emma_config
     - _self_
