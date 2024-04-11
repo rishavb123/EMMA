@@ -25,6 +25,7 @@ model_kwargs:
         correct_key_color_idx: []
 policy_cls: stable_baselines3.ppo.MlpPolicy
 wrapper_cls_lst:
+    - minigrid.wrappers.OneHotPartialObsWrapper
     - minigrid.wrappers.ImgObsWrapper
     - gymnasium.wrappers.FlattenObservation
 external_model_batch_size: 64

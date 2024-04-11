@@ -136,23 +136,40 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
         ).flatten(end_dim=1)
         if len(observations.shape) == 2:
             batch_size = observations.shape[0]
-            channels = 3
-            width = int((observations.shape[1] // 3) ** 0.5)
+            channels = 20 if set(torch.unique(observations).cpu().numpy()) == {0.0, 1.0} else 3
+            print("HERE", channels)
+            width = int((observations.shape[1] // channels) ** 0.5)
             height = width
-            observations = observations.reshape((batch_size, channels, width, height))
+            observations = observations.reshape((batch_size, width, height, channels)).moveaxis(3, 1)
         elif len(observations.shape) == 4:
             batch_size, channels, width, height = observations.shape
         else:
             raise ValueError(f"Unknown observation shape: {observations.shape}")
+
+        if channels == 20:
+            obj_elements = len(OBJECT_TO_IDX)
+            colors_elements = len(COLOR_TO_IDX)
+
+            one_hot_encoded_objs = observations[:, :obj_elements, :, :]
+            one_hot_encoded_colors = observations[:, obj_elements:obj_elements + colors_elements, :, :]
+            one_hot_encoded_states = observations[:, obj_elements + colors_elements:, :, :]
+
+            obj_idxs = torch.argmax(one_hot_encoded_objs, dim=1)
+            color_idxs = torch.argmax(one_hot_encoded_colors, dim=1)
+            state_idxs = torch.argmax(one_hot_encoded_states, dim=1)
+
+            observations = torch.stack([obj_idxs, color_idxs, state_idxs], dim=1)
+
+
         obj_idxs = observations[:, 0, :, :]
-        colors = observations[:, 1, :, :]
+        color_idxs = observations[:, 1, :, :]
 
         min_dists = []
 
         for batch_idx in range(batch_size):
             mask = torch.logical_and(
                 obj_idxs[batch_idx] == OBJECT_TO_IDX["key"],
-                colors[batch_idx] == correct_key_color_idx[batch_idx],
+                color_idxs[batch_idx] == correct_key_color_idx[batch_idx],
             )
             indices = mask.nonzero().to(device=self.device, dtype=self.dtype)
             agent_pos = torch.tensor(
