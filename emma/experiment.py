@@ -1,16 +1,15 @@
 from typing import Any, Dict
 from dataclasses import dataclass, field
-from experiment_lab.core.base_config import BaseConfig
 import hydra
 from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING
 import logging
-from pandas import DataFrame
+import pandas as pd
 import wandb
+import matplotlib.pyplot as plt
 import copy
 
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3 import PPO
 
 from experiment_lab.experiments.rl import RLConfig, RLExperiment
 from experiment_lab.core import run_experiment, BaseAnalysis
@@ -202,16 +201,87 @@ class EMMAConfig(RLConfig):
         else:
             self.model_kwargs["poi_model"] = instantiated_poi_model
 
+
 class EMMAAnalysis(BaseAnalysis):
 
     def __init__(self, cfg: EMMAConfig) -> None:
         self.cfg = cfg
 
-    def analyze(self, df: DataFrame, configs: Dict[str, Dict[str, Any]]) -> Any:
-        print(df.head())
-        import pdb
-        pdb.set_trace()
+    def analyze(self, df: pd.DataFrame, configs: Dict[str, Dict[str, Any]]) -> Any:
 
+        results_idx = []
+        results_values = {
+            f"convergence_efficiency_{env_idx}": []
+            for env_idx in range(1 + len(self.cfg.transfer_steps))
+        }
+
+        for experiment_id in df.index.get_level_values(0).unique():
+            run_config = configs[experiment_id]
+            for run_id in df.loc[experiment_id].index.get_level_values(0).unique():
+                run_df = df.loc[experiment_id, run_id]
+
+                objective = (
+                    run_df["external_model_train/av_external_model_loss"]
+                    .ewm(span=30)
+                    .mean()
+                )
+                reverse_cum_min_objective = objective[::-1].cummin()[::-1]
+                max_objective = objective.max()
+
+                transfer_steps = run_config["transfer_steps"]
+                idx_transfers = [
+                    (run_df["global_step"] > transfer_step).idxmax()
+                    for transfer_step in transfer_steps
+                ]
+                idx_transfers.insert(0, 0)
+                idx_transfers.append(run_df.shape[0])
+
+                converged_signal = (objective - reverse_cum_min_objective) / (
+                    max_objective - reverse_cum_min_objective
+                ) < 0.02
+
+                results_idx.append((experiment_id, run_id))
+                for i in range(len(idx_transfers) - 1):
+                    cur_idx = idx_transfers[i]
+                    next_idx = idx_transfers[i + 1]
+                    first_true = converged_signal[cur_idx:next_idx].idxmax()
+                    converged_signal[first_true:next_idx] = True
+                    results_values[f"convergence_efficiency_{i}"].append(
+                        run_df.loc[first_true, "global_step"]
+                        - run_df.loc[cur_idx, "global_step"]
+                    )
+
+                # run_df["converged_signal"] = converged_signal
+
+        q = 0.25
+
+        def iqm(series: pd.Series):
+            return series[
+                (series.quantile(q) <= series) & (series <= series.quantile(1 - q))
+            ].mean()
+
+        def iqstd(series: pd.Series):
+            return series[
+                (series.quantile(q) <= series) & (series <= series.quantile(1 - q))
+            ].std()
+
+        aggregators = ["mean", "std", iqm, iqstd]
+        results_df = (
+            pd.DataFrame(
+                results_values,
+                index=pd.MultiIndex.from_tuples(results_idx, names=df.index.names[:2]),
+            )
+            .groupby("experiment_id")
+            .agg({col: aggregators for col in results_values})
+        )
+
+        results_df.columns = [f"{col[0]}_{col[1]}" for col in results_df.columns]
+
+        results_df.to_json(f"{self.output_directory}/results.json", indent=4)
+
+        logger.info(f"\n{results_df}")
+
+        return f"Saved Results to {self.output_directory}/results.json"
 
 
 def register_configs():
