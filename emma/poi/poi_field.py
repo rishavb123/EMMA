@@ -19,7 +19,6 @@ class POIFieldModel(abc.ABC):
     def calculate_poi_values(
         self,
         model_inp: torch.Tensor,
-        poi_shape: Tuple,
     ) -> np.ndarray:
         pass
 
@@ -32,9 +31,8 @@ class ZeroPOIField(POIFieldModel):
     def calculate_poi_values(
         self,
         model_inp: torch.Tensor,
-        poi_shape: Tuple,
     ) -> np.ndarray:
-        return np.zeros_like(poi_shape)
+        return np.zeros(model_inp.shape[0])
 
 
 class DisagreementPOIField(POIFieldModel):
@@ -48,13 +46,12 @@ class DisagreementPOIField(POIFieldModel):
     def calculate_poi_values(
         self,
         model_inp: torch.Tensor,
-        poi_shape: Tuple,
     ) -> np.ndarray:
         with torch.no_grad():
             uncertainty: torch.Tensor = (
                 self.external_model_trainer.model.uncertainty_estimate(model_inp)
             )
-            return uncertainty.cpu().numpy().reshape(poi_shape)
+            return uncertainty.cpu().numpy()
 
 
 class ModelGradientPOIField(POIFieldModel):
@@ -65,7 +62,6 @@ class ModelGradientPOIField(POIFieldModel):
     def calculate_poi_values(
         self,
         model_inp: torch.Tensor,
-        poi_shape: Tuple,
     ) -> np.ndarray:
         self.external_model_trainer.model.train(mode=False)
         model_out = self.external_model_trainer.model(model_inp)
@@ -84,4 +80,4 @@ class ModelGradientPOIField(POIFieldModel):
             ).mean()
             grad_lst.append(grad_mean)
 
-        return np.array(grad_lst).reshape(poi_shape)
+        return np.array(grad_lst)

@@ -94,8 +94,8 @@ class POIInstrinsicRewardPPO(POIPPO):
                     )
                 )
                 intrinsic_rewards = self.beta * self.poi_model.calculate_poi_values(
-                    model_inp=model_inp, poi_shape=self.rollout_buffer.rewards.shape
-                )
+                    model_inp=model_inp
+                ).reshape(self.rollout_buffer.rewards.shape)
 
                 logger.debug(
                     f"Extrinsic Reward Mean: {self.rollout_buffer.rewards.mean()}"

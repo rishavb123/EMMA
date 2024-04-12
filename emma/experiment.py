@@ -154,9 +154,7 @@ class EMMATrainerCallback(BaseCallback):
             out=out,
         )
 
-        av_poi_value = self.poi_field_model.calculate_poi_values(
-            model_inp=inp, poi_shape=rollout_buffer.rewards.shape
-        ).mean()
+        av_poi_value = self.poi_field_model.calculate_poi_values(model_inp=inp).mean()
 
         logger.info(f"Train - Av Loss: {av_loss}; Av POI per step: {av_poi_value}")
 
@@ -214,7 +212,6 @@ class EMMATrainerCallback(BaseCallback):
             )
             eval_av_poi_value = self.poi_field_model.calculate_poi_values(
                 model_inp=eval_inp,
-                poi_shape=self.random_eval_model.rollout_buffer.rewards.shape,
             ).mean()
 
             logger.info(
