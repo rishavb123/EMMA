@@ -210,19 +210,11 @@ class ExternalModelTrainer(abc.ABC):
 
     def receive_rollout(
         self,
-        env: VecEnv,
-        rollout_buffer: RolloutBuffer,
-        info_buffer: Dict[str, np.ndarray],
+        inp: torch.Tensor,
+        out: torch.Tensor,
     ) -> np.ndarray:
         if self.model is None:
             raise Exception("Model is not set!")
-
-        inp = self.rollout_to_model_input(
-            env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
-        ).to(device=self.device, dtype=self.dtype)
-        out = self.rollout_to_model_output(
-            env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
-        ).to(device=self.device, dtype=self.dtype)
 
         self.optimizer.zero_grad()
 
@@ -237,19 +229,11 @@ class ExternalModelTrainer(abc.ABC):
 
     def calc_loss(
         self,
-        env: VecEnv,
-        rollout_buffer: RolloutBuffer,
-        info_buffer: Dict[str, np.ndarray],
+        inp: torch.Tensor,
+        out: torch.Tensor,
     ):
         if self.model is None:
             raise Exception("Model is not set!")
-
-        inp = self.rollout_to_model_input(
-            env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
-        ).to(device=self.device, dtype=self.dtype)
-        out = self.rollout_to_model_output(
-            env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
-        ).to(device=self.device, dtype=self.dtype)
 
         with torch.no_grad():
             self.model.train(mode=False)
@@ -296,9 +280,8 @@ class PolicyTrainer(ExternalModelTrainer):
 
     def receive_rollout(
         self,
-        env: VecEnv,
-        rollout_buffer: RolloutBuffer,
-        info_buffer: Dict[str, np.ndarray],
+        inp: torch.Tensor,
+        out: torch.Tensor,
     ) -> np.ndarray:
         # Policy is already being trained by stable baselines
         # Don't need to do it here

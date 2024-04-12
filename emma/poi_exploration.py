@@ -86,10 +86,18 @@ class POIInstrinsicRewardPPO(POIPPO):
         )
         if result:
             if self.poi_model is not None:
+                model_inp = (
+                    self.poi_model.external_model_trainer.rollout_to_model_input(
+                        env=env,
+                        rollout_buffer=rollout_buffer,
+                        info_buffer=self.info_buffer,
+                    )
+                ).to(
+                    device=self.poi_model.external_model_trainer.device,
+                    dtype=self.poi_model.external_model_trainer.dtype,
+                )
                 intrinsic_rewards = self.beta * self.poi_model.calculate_poi_values(
-                    env=env,
-                    rollout_buffer=rollout_buffer,
-                    info_buffer=self.info_buffer,
+                    model_inp=model_inp, poi_shape=self.rollout_buffer.rewards.shape
                 )
 
                 logger.debug(

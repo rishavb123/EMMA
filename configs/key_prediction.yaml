@@ -6,8 +6,8 @@ model_trainer:
         inner_module:
             _target_: experiment_lab.common.networks.create_mlp_network
             layer_sizes:
-                - 147
-                - 50
+                - 980
+                - 100
                 - 10
                 - 1
             layer_activations:
