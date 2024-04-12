@@ -8,8 +8,8 @@ env_config:
     key_colors:
         - [red, blue]
 poi_model:
-    _target_: emma.poi_field.ZeroPOIField
-model_cls: emma.poi_exploration.POIAgnosticPPO
+    _target_: emma.poi.poi_field.ZeroPOIField
+model_cls: emma.poi.poi_exploration.POIAgnosticPPO
 model_kwargs:
     learning_rate: 0.00075
     n_steps: 2048
@@ -30,9 +30,9 @@ wrapper_cls_lst:
     - gymnasium.wrappers.FlattenObservation
 external_model_batch_size: 64
 state_sampler:
-    _target_: emma.state_samplers.VAESampler
+    _target_: emma.components.state_samplers.VAESampler
     vae:
-        _target_: emma.networks.VAE
+        _target_: emma.components.networks.VAE
         encoder:
             _target_: experiment_lab.common.networks.create_multi_network
             input_module:

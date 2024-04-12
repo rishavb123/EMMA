@@ -1,6 +1,6 @@
 experiment_name: loss_ir_policy_door_key_change
 poi_model:
-    _target_: emma.poi_field.LossPOIField
+    _target_: emma.poi.poi_field.LossPOIField
 model_kwargs:
     beta: 0.001
 defaults:

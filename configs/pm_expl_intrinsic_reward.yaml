@@ -1,5 +1,5 @@
 experiment_name: ir_policy_door_key_change
-model_cls: emma.poi_exploration.POIInstrinsicRewardPPO
+model_cls: emma.poi.poi_exploration.POIInstrinsicRewardPPO
 defaults:
     - policy_model
     - _self_

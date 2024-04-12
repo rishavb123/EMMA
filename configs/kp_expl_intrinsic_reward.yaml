@@ -1,5 +1,5 @@
 experiment_name: ir_key_prediction_door_key_change
-model_cls: emma.poi_exploration.POIInstrinsicRewardPPO
+model_cls: emma.poi.poi_exploration.POIInstrinsicRewardPPO
 defaults:
     - key_prediction
     - _self_

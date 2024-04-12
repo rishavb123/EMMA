@@ -3,8 +3,8 @@ from typing import Any
 import gymnasium as gym
 import numpy as np
 
-from emma.poi_field import POIFieldModel
-from emma.state_samplers import StateSampler
+from emma.poi.poi_field import POIFieldModel
+from emma.components.state_samplers import StateSampler
 
 
 class EMMAWrapper(gym.ObservationWrapper):

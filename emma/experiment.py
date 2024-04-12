@@ -16,10 +16,10 @@ from experiment_lab.experiments.rl.environment import GeneralVecEnv
 from experiment_lab.experiments.rl import RLConfig, RLExperiment
 from experiment_lab.core import run_experiment, BaseAnalysis
 
-from emma.poi_field import POIFieldModel
-from emma.poi_exploration import POIPPO
+from emma.poi.poi_field import POIFieldModel
+from emma.poi.poi_exploration import POIPPO
 from emma.external_model import ExternalModelTrainer
-from emma.poi_wrapper import StateSampler
+from emma.poi.poi_wrapper import StateSampler
 
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ class EMMAConfig(RLConfig):
             self.wrapper_kwargs_lst = []
         for _ in range(len(self.wrapper_kwargs_lst), len(self.wrapper_cls_lst)):
             self.wrapper_kwargs_lst.append({})
-        self.wrapper_cls_lst.append("emma.poi_wrapper.EMMAWrapper")
+        self.wrapper_cls_lst.append("emma.poi.poi_wrapper.EMMAWrapper")
         self.wrapper_kwargs_lst.append(
             {
                 "poi_model": instantiated_poi_model,

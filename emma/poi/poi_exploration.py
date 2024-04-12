@@ -8,7 +8,7 @@ from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.buffers import RolloutBuffer
 
-from emma.poi_field import POIFieldModel
+from emma.poi.poi_field import POIFieldModel
 
 
 logger = logging.getLogger(__name__)

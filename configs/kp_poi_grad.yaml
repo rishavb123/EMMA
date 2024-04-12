@@ -1,6 +1,6 @@
 experiment_name: grad_ir_key_prediction_door_key_change
 poi_model:
-    _target_: emma.poi_field.ModelGradientPOIField
+    _target_: emma.poi.poi_field.ModelGradientPOIField
 model_kwargs:
     beta: 10
 defaults:

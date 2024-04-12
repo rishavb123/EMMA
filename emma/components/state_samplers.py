@@ -5,7 +5,7 @@ import torch
 import hydra
 import numpy as np
 
-from emma.networks import VAE
+from emma.components.networks import VAE
 
 
 class StateSampler(abc.ABC):
