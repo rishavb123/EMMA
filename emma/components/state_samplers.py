@@ -18,7 +18,7 @@ class StateSampler(abc.ABC):
         pass
 
     def train(self, inp: torch.Tensor) -> np.ndarray:
-        return 0.0
+        return np.array(0.0)
 
 
 class NoiseSampler(StateSampler):
