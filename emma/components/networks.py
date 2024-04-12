@@ -46,7 +46,7 @@ class VAE(nn.Module):
 
     def loss(self, x: torch.Tensor) -> torch.Tensor:
         x_hat, mean, logvar = self.forward(x=x)
-        reconstruction_loss = self.reconstruction_loss_f(x, x_hat)
+        reconstruction_loss = self.reconstruction_loss_f(x_hat, x)
         kl_divergence_loss = -0.5 * torch.sum(1 + logvar - mean.pow(2) - logvar.exp())
         return reconstruction_loss + kl_divergence_loss
 
