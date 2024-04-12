@@ -14,7 +14,7 @@ model_kwargs:
     learning_rate: 0.00075
     n_steps: 2048
     batch_size: 256
-    n_epochs: 8
+    n_epochs: 4
     gamma: 0.99
     gae_lambda: 0.95
     clip_range: 0.2
@@ -27,15 +27,15 @@ policy_cls: stable_baselines3.ppo.MultiInputPolicy
 policy_kwargs:
     activation_fn: torch.nn.Tanh
     net_arch:
-        pi: [256, 64, 16]
-        vi: [256, 64, 16]
+        pi: [256, 64]
+        vi: [256, 64]
 wrapper_cls_lst:
     - minigrid.wrappers.OneHotPartialObsWrapper
     - minigrid.wrappers.ImgObsWrapper
     - gymnasium.wrappers.FlattenObservation
 poi_emb_learner:
     _target_: emma.poi.poi_emb_learner.SamplingPOILearner
-    poi_emb_size: 64
+    poi_emb_size: 0
     state_sampler:
         _target_: emma.components.state_samplers.VAESampler
         vae:
