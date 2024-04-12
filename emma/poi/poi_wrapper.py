@@ -63,8 +63,8 @@ class EMMAWrapper(gym.ObservationWrapper):
                     )
                 else:
                     self.generate_poi_emb(cur_obs=observation)
-        assert self.current_poi_emb is not None, "Current POI embedding is None!"
         if self.use_poi_emb:
+            assert self.current_poi_emb is not None, "Current POI embedding is None!"
             return {
                 "state": observation,
                 "poi_emb": self.current_poi_emb,

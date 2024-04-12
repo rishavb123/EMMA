@@ -4,6 +4,7 @@ record_policy_videos: false
 hydra:
     verbose: true
 device: mps
+total_time_steps: 100
 defaults:
-    - kp_poi_disagreement
+    - key_prediction
     - _self_
