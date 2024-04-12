@@ -27,8 +27,8 @@ policy_cls: stable_baselines3.ppo.MultiInputPolicy
 policy_kwargs:
     activation_fn: torch.nn.Tanh
     net_arch:
-        pi: [256, 64]
-        vi: [256, 64]
+        pi: [512, 128, 32]
+        vi: [512, 128, 32]
 wrapper_cls_lst:
     - minigrid.wrappers.OneHotPartialObsWrapper
     - minigrid.wrappers.ImgObsWrapper
