@@ -5,6 +5,7 @@ hydra:
     verbose: true
 device: mps
 total_time_steps: 100
+n_runs: 1
 defaults:
     - key_prediction
     - _self_
