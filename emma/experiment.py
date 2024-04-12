@@ -6,11 +6,8 @@ from omegaconf import MISSING
 import logging
 import pandas as pd
 import wandb
-import matplotlib.pyplot as plt
-import copy
 
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.ppo import MlpPolicy
 
 from experiment_lab.experiments.rl.environment import GeneralVecEnv
 from experiment_lab.experiments.rl import RLConfig, RLExperiment
@@ -27,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class EMMAConfig(RLConfig):
+
+    model_cls: str = "emma.poi.poi_exploration.POIAgnosticPPO"
 
     model_trainer: Dict[str, Any] = MISSING
     n_eval_steps: int = 1280
