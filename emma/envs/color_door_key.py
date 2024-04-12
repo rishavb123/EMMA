@@ -137,7 +137,6 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
         if len(observations.shape) == 2:
             batch_size = observations.shape[0]
             channels = 20 if set(torch.unique(observations).cpu().numpy()) == {0.0, 1.0} else 3
-            print("HERE", channels)
             width = int((observations.shape[1] // channels) ** 0.5)
             height = width
             observations = observations.reshape((batch_size, width, height, channels)).moveaxis(3, 1)
