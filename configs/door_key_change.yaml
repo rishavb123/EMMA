@@ -35,7 +35,7 @@ wrapper_cls_lst:
     - gymnasium.wrappers.FlattenObservation
 poi_emb_learner:
     _target_: emma.poi.poi_emb_learner.SamplingPOILearner
-    poi_emb_size: 0
+    poi_emb_size: 64
     state_sampler:
         _target_: emma.components.state_samplers.VAESampler
         vae:
