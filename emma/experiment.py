@@ -19,7 +19,7 @@ from experiment_lab.core import run_experiment, BaseAnalysis
 from emma.poi.poi_field import POIFieldModel
 from emma.poi.poi_exploration import POIPPO
 from emma.external_model import ExternalModelTrainer
-from emma.poi.poi_wrapper import StateSampler
+from emma.poi.poi_emb_learner import POIEmbLearner
 
 
 logger = logging.getLogger(__name__)
@@ -29,14 +29,13 @@ logger = logging.getLogger(__name__)
 class EMMAConfig(RLConfig):
 
     model_trainer: Dict[str, Any] = MISSING
-    external_model_batch_size: int = 64
     n_eval_steps: int = 1280
 
     poi_model: Dict[str, Any] = field(
-        default_factory=lambda: {"_target_": "emma.poi_field.ZeroPOIField"}
+        default_factory=lambda: {"_target_": "emma.poi.poi_field.ZeroPOIField"}
     )
-    state_sampler: Dict[str, Any] | None = field(
-        default_factory=lambda: {"_target_": "emma.state_samplers.NoiseSampler"}
+    poi_emb_learner: Dict[str, Any] | None = field(
+        default_factory=lambda: {"_target_": "emma.poi.poi_emb_learner.RandomEmb"}
     )
     emma_wrapper_kwargs: Dict[str, Any] = field(default_factory=lambda: {})
 
@@ -50,14 +49,14 @@ class EMMAConfig(RLConfig):
         instantiated_poi_model = hydra.utils.instantiate(
             self.poi_model, external_model_trainer=model_trainer
         )
-        instantiated_state_sampler = hydra.utils.instantiate(
-            self.state_sampler,
-            device=self.device,
+        instantiated_poi_emb_learner = hydra.utils.instantiate(
+            self.poi_emb_learner,
         )
+        instantiated_poi_emb_learner.set_device(self.device)
 
         if self.callback_cls_lst is None:
             self.callback_cls_lst = []
-        self.callback_cls_lst.insert(0, "emma.experiment.ExternalModelTrainerCallback")
+        self.callback_cls_lst.insert(0, "emma.experiment.EMMATrainerCallback")
 
         if self.callback_kwargs_lst is None:
             self.callback_kwargs_lst = []
@@ -66,8 +65,7 @@ class EMMAConfig(RLConfig):
             {
                 "model_trainer": model_trainer,
                 "poi_field_model": instantiated_poi_model,
-                "state_sampler": instantiated_state_sampler,
-                "batch_size": self.external_model_batch_size,
+                "poi_emb_learner": instantiated_poi_emb_learner,
                 "n_eval_steps": self.n_eval_steps,
                 "wandb_mode": (
                     self.wandb["mode"]
@@ -87,7 +85,7 @@ class EMMAConfig(RLConfig):
         self.wrapper_kwargs_lst.append(
             {
                 "poi_model": instantiated_poi_model,
-                "state_sampler": instantiated_state_sampler,
+                "poi_emb_learner": instantiated_poi_emb_learner,
                 **self.emma_wrapper_kwargs,
             }
         )
@@ -98,13 +96,13 @@ class EMMAConfig(RLConfig):
             self.model_kwargs["poi_model"] = instantiated_poi_model
 
 
-class ExternalModelTrainerCallback(BaseCallback):
+class EMMATrainerCallback(BaseCallback):
 
     def __init__(
         self,
         model_trainer: ExternalModelTrainer,
         poi_field_model: POIFieldModel,
-        state_sampler: StateSampler,
+        poi_emb_learner: POIEmbLearner,
         batch_size: int = 32,
         n_eval_steps: int = 0,
         wandb_mode: str | None = None,
@@ -113,7 +111,7 @@ class ExternalModelTrainerCallback(BaseCallback):
         super().__init__(verbose)
         self.model_trainer = model_trainer
         self.poi_field_model = poi_field_model
-        self.state_sampler = state_sampler
+        self.poi_emb_learner = poi_emb_learner
         self.batch_size = batch_size
         self.n_eval_steps = n_eval_steps
         self.random_eval_model: POIPPO | None = None
@@ -145,12 +143,12 @@ class ExternalModelTrainerCallback(BaseCallback):
 
         inp = self.model_trainer.rollout_to_model_input(
             env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
-        ).to(device=self.model_trainer.device, dtype=self.model_trainer.dtype)
+        )
         out = self.model_trainer.rollout_to_model_output(
             env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
         ).to(device=self.model_trainer.device, dtype=self.model_trainer.dtype)
 
-        self.state_sampler.train(inp=inp)
+        self.poi_emb_learner.train(inp=inp)
 
         av_loss = self.model_trainer.receive_rollout(
             inp=inp,
@@ -169,7 +167,7 @@ class ExternalModelTrainerCallback(BaseCallback):
         if self.n_eval_steps > 0:
             if self.random_eval_model is None:
                 self.random_eval_model = POIPPO(
-                    policy=MlpPolicy,
+                    policy=self.model.policy_class,
                     env=env.eval_env,
                     learning_rate=0,
                     n_steps=self.n_eval_steps,

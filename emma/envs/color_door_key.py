@@ -11,6 +11,7 @@ from minigrid.core.grid import Grid
 from minigrid.core.world_object import Door, Goal, Key
 from minigrid.core.mission import MissionSpace
 from minigrid.minigrid_env import MiniGridEnv
+from torch.nn.modules import Module
 
 from emma.external_model import ExternalModelTrainer
 
@@ -113,13 +114,24 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
 
     def __init__(
         self,
-        model: torch.nn.Module,
+        model: Module | None,
         device: str,
-        lr: float = 0.001,
+        loss_type: type[Module] = torch.nn.MSELoss,
+        optimizer_cls: str = "torch.optim.Adam",
+        optimizer_kwargs: Dict[str, Any] | None = None,
+        batch_size: int = 128,
+        epochs_per_rollout: int = 1,
         dtype=torch.float32,
     ) -> None:
         super().__init__(
-            model=model, device=device, loss_type=torch.nn.MSELoss, lr=lr, dtype=dtype
+            model,
+            device,
+            loss_type,
+            optimizer_cls,
+            optimizer_kwargs,
+            batch_size,
+            epochs_per_rollout,
+            dtype,
         )
 
     def rollout_to_model_output(
@@ -128,18 +140,22 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
         rollout_buffer: RolloutBuffer,
         info_buffer: Dict[str, np.ndarray],
     ) -> torch.Tensor:
-        observations = rollout_buffer.to_torch(rollout_buffer.observations).flatten(
-            end_dim=1
+        observations = self.rollout_to_model_input(
+            env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
         )
         correct_key_color_idx = rollout_buffer.to_torch(
             info_buffer["correct_key_color_idx"]
         ).flatten(end_dim=1)
         if len(observations.shape) == 2:
             batch_size = observations.shape[0]
-            channels = 20 if set(torch.unique(observations).cpu().numpy()) == {0.0, 1.0} else 3
+            channels = (
+                20 if set(torch.unique(observations).cpu().numpy()) == {0.0, 1.0} else 3
+            )
             width = int((observations.shape[1] // channels) ** 0.5)
             height = width
-            observations = observations.reshape((batch_size, width, height, channels)).moveaxis(3, 1)
+            observations = observations.reshape(
+                (batch_size, width, height, channels)
+            ).moveaxis(3, 1)
         elif len(observations.shape) == 4:
             batch_size, channels, width, height = observations.shape
         else:
@@ -150,15 +166,18 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
             colors_elements = len(COLOR_TO_IDX)
 
             one_hot_encoded_objs = observations[:, :obj_elements, :, :]
-            one_hot_encoded_colors = observations[:, obj_elements:obj_elements + colors_elements, :, :]
-            one_hot_encoded_states = observations[:, obj_elements + colors_elements:, :, :]
+            one_hot_encoded_colors = observations[
+                :, obj_elements : obj_elements + colors_elements, :, :
+            ]
+            one_hot_encoded_states = observations[
+                :, obj_elements + colors_elements :, :, :
+            ]
 
             obj_idxs = torch.argmax(one_hot_encoded_objs, dim=1)
             color_idxs = torch.argmax(one_hot_encoded_colors, dim=1)
             state_idxs = torch.argmax(one_hot_encoded_states, dim=1)
 
             observations = torch.stack([obj_idxs, color_idxs, state_idxs], dim=1)
-
 
         obj_idxs = observations[:, 0, :, :]
         color_idxs = observations[:, 1, :, :]

@@ -10,7 +10,10 @@ from emma.components.networks import VAE
 
 class StateSampler(abc.ABC):
 
-    def __init__(self, device: str | None) -> None:
+    def __init__(self) -> None:
+        pass
+
+    def set_device(self, device: str | None) -> None:
         self.device = device
 
     @abc.abstractmethod
@@ -42,15 +45,13 @@ class VAESampler(StateSampler):
     def __init__(
         self,
         vae: VAE,
-        device: str | None,
         optimizer_cls: str = "torch.optim.Adam",
         optimizer_kwargs: Dict[str, Any] | None = None,
         vae_train_epochs: int = 1,
         vae_train_batch_size: int = 128,
     ) -> None:
-        super().__init__(device)
+        super().__init__()
         self.vae = vae
-        self.vae.set_device(device=device)
         self.optimizer: torch.optim.Optimizer = hydra.utils.instantiate(
             {
                 "_target_": optimizer_cls,
@@ -60,6 +61,10 @@ class VAESampler(StateSampler):
         )
         self.vae_train_epochs = vae_train_epochs
         self.vae_train_batch_size = vae_train_batch_size
+
+    def set_device(self, device: str | None) -> None:
+        super().set_device(device)
+        self.vae.set_device(device=device)
 
     def sample(self, cur_obs: Any, batch_size: int = 1) -> torch.Tensor:
         return self.vae.sample(batch_size=batch_size, condition=cur_obs)

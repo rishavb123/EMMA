@@ -23,59 +23,60 @@ model_kwargs:
     max_grad_norm: 0.5
     infos_to_save:
         correct_key_color_idx: []
-policy_cls: stable_baselines3.ppo.MlpPolicy
+policy_cls: stable_baselines3.ppo.MultiInputPolicy
 wrapper_cls_lst:
     - minigrid.wrappers.OneHotPartialObsWrapper
     - minigrid.wrappers.ImgObsWrapper
     - gymnasium.wrappers.FlattenObservation
-external_model_batch_size: 64
-state_sampler:
-    _target_: emma.components.state_samplers.VAESampler
-    vae:
-        _target_: emma.components.networks.VAE
-        encoder:
-            _target_: experiment_lab.common.networks.create_multi_network
-            input_module:
+poi_emb_learner:
+    _target_: emma.poi.poi_emb_learner.SamplingPOILearner
+    poi_emb_size: 64
+    state_sampler:
+        _target_: emma.components.state_samplers.VAESampler
+        vae:
+            _target_: emma.components.networks.VAE
+            encoder:
+                _target_: experiment_lab.common.networks.create_multi_network
+                input_module:
+                    _target_: experiment_lab.common.networks.create_mlp_network
+                    layer_sizes:
+                        - 980
+                        - 200
+                        - 100
+                    layer_activations:
+                        _target_: torch.nn.LeakyReLU
+                        negative_slope: 0.01
+                    final_activation:
+                        _target_: torch.nn.LeakyReLU
+                        negative_slope: 0.01
+                module_lst:
+                    - _target_: torch.nn.Linear
+                      in_features: 100
+                      out_features: 32
+                    - _target_: torch.nn.Linear
+                      in_features: 100
+                      out_features: 32
+            decoder:
                 _target_: experiment_lab.common.networks.create_mlp_network
                 layer_sizes:
-                    - 980
-                    - 200
+                    - 32
                     - 100
+                    - 200
+                    - 980
                 layer_activations:
                     _target_: torch.nn.LeakyReLU
                     negative_slope: 0.01
                 final_activation:
-                    _target_: torch.nn.LeakyReLU
-                    negative_slope: 0.01
-            module_lst:
-                - _target_: torch.nn.Linear
-                  in_features: 100
-                  out_features: 32
-                - _target_: torch.nn.Linear
-                  in_features: 100
-                  out_features: 32
-        decoder:
-            _target_: experiment_lab.common.networks.create_mlp_network
-            layer_sizes:
-                - 32
-                - 100
-                - 200
-                - 980
-            layer_activations:
-                _target_: torch.nn.LeakyReLU
-                negative_slope: 0.01
-            final_activation:
-                _target_: torch.nn.Sigmoid
-        latent_dim: 32
-        reconstruction_loss_f:
-            _target_: torch.nn.BCELoss
-    optimizer_cls: torch.optim.Adam
-    optimizer_kwargs:
-        lr: 0.001
-    vae_train_epochs: 1
-    vae_train_batch_size: 256
+                    _target_: torch.nn.Sigmoid
+            latent_dim: 32
+            reconstruction_loss_f:
+                _target_: torch.nn.BCELoss
+        optimizer_cls: torch.optim.Adam
+        optimizer_kwargs:
+            lr: 0.001
+        vae_train_epochs: 1
+        vae_train_batch_size: 256
 emma_wrapper_kwargs:
-    poi_emb_size: 0
     per_step_poi_emb: True
 total_time_steps: 10000000
 transfer_steps:

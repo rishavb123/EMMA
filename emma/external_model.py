@@ -1,11 +1,12 @@
 from typing import Any, Callable, Dict, List, Tuple, Type
 
 import abc
-from gymnasium import Space
+import gymnasium as gym
 import torch
 from torch import nn
 import logging
 import numpy as np
+import hydra
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.buffers import RolloutBuffer
@@ -15,6 +16,7 @@ from stable_baselines3.common.torch_layers import (
     MlpExtractor,
     FlattenExtractor,
     BaseFeaturesExtractor,
+    CombinedExtractor,
 )
 
 from torch.optim.adam import Adam as Adam
@@ -85,8 +87,8 @@ class MCActorCriticPolicy(ActorCriticPolicy):
 
     def __init__(
         self,
-        observation_space: Space,
-        action_space: Space,
+        observation_space: gym.Space,
+        action_space: gym.Space,
         lr_schedule: Callable[[float], float],
         net_arch: List[int] | Dict[str, List[int]] | None = None,
         activation_fn: nn.Module = nn.Tanh,
@@ -107,6 +109,8 @@ class MCActorCriticPolicy(ActorCriticPolicy):
     ):
         self.mlp_extractor_dropout_p = mlp_extractor_dropout_p
         self.mlp_extractor_num_samples = mlp_extractor_num_samples
+        if isinstance(observation_space, gym.spaces.Dict):
+            features_extractor_class = CombinedExtractor
         super().__init__(
             observation_space,
             action_space,
@@ -164,22 +168,34 @@ class ExternalModelTrainer(abc.ABC):
         model: torch.nn.Module | None,
         device: str,
         loss_type: Type[torch.nn.Module],
-        lr: float = 0.001,
+        optimizer_cls: str = "torch.optim.Adam",
+        optimizer_kwargs: Dict[str, Any] | None = None,
+        batch_size: int = 128,
+        epochs_per_rollout: int = 1,
         dtype=torch.float32,
     ) -> None:
         self.device = device
         self.dtype = dtype
-        self.lr = lr
+        self.optimizer_cls = optimizer_cls
+        self.optimizer_kwargs = {} if optimizer_kwargs is None else optimizer_kwargs
         self.set_model(model)
         self.loss_type = loss_type
         self.loss_f = self.loss_type().to(device=device, dtype=dtype)
+        self.batch_size = batch_size
+        self.epochs_per_rollout = epochs_per_rollout
 
     def set_model(self, model: torch.nn.Module | None):
         if model is None:
             self.model = None
         else:
             self.model = model.to(device=self.device, dtype=self.dtype)
-            self.optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
+            self.optimizer: torch.optim.Optimizer = hydra.utils.instantiate(
+                {
+                    "_target_": self.optimizer_cls,
+                    **self.optimizer_kwargs,
+                },
+                params=self.model.parameters(),
+            )
 
     def set_agent(self, agent: PPO) -> None:
         # self.agent = agent
@@ -195,9 +211,12 @@ class ExternalModelTrainer(abc.ABC):
         rollout_buffer: RolloutBuffer,
         info_buffer: Dict[str, np.ndarray],
     ) -> torch.Tensor:
-        return self.process_observations(
-            rollout_buffer.to_torch(rollout_buffer.observations)
+        observations = (
+            rollout_buffer.observations["state"]
+            if isinstance(rollout_buffer.observations, dict)
+            else rollout_buffer.observations
         )
+        return self.process_observations(rollout_buffer.to_torch(observations))
 
     @abc.abstractmethod
     def rollout_to_model_output(
@@ -219,13 +238,33 @@ class ExternalModelTrainer(abc.ABC):
         self.optimizer.zero_grad()
 
         self.model.train(mode=True)
-        pred_out = self.model(inp)
-        loss = self.loss_f(out, pred_out)
-        loss.backward()
 
-        self.optimizer.step()
+        n_examples = inp.shape[0]
+        eff_batch_size = min(n_examples, self.batch_size)
+        if eff_batch_size == -1:
+            eff_batch_size = n_examples
 
-        return loss.item()
+        total_loss = 0.0
+
+        for _ in range(self.epochs_per_rollout):
+            indices = torch.randperm(n_examples)
+            for start_idx in range(0, n_examples, eff_batch_size):
+                end_idx = min(start_idx + eff_batch_size, n_examples)
+
+                idx = indices[start_idx:end_idx]
+
+                data = inp[idx]
+                self.optimizer.zero_grad()
+
+                pred_out = self.model(data)
+                loss = self.loss_f(out[idx], pred_out)
+
+                loss.backward()
+                self.optimizer.step()
+
+                total_loss += loss.item() * (end_idx - start_idx)
+
+        return total_loss / (n_examples * self.epochs_per_rollout)
 
     def calc_loss(
         self,
@@ -249,10 +288,18 @@ class PolicyTrainer(ExternalModelTrainer):
     def __init__(
         self,
         device: str,
-        lr: float = 0.001,
         dtype=torch.float32,
     ) -> None:
-        super().__init__(None, device, torch.nn.MSELoss, lr, dtype)
+        super().__init__(
+            None,
+            device,
+            torch.nn.MSELoss,
+            "torch.optim.Adam",
+            None,
+            -1,
+            -1,
+            dtype,
+        )
 
     def set_agent(self, agent: PPO) -> None:
         if self.model is None:
@@ -268,6 +315,24 @@ class PolicyTrainer(ExternalModelTrainer):
             self.model = None
         else:
             self.model = model.to(device=self.device, dtype=self.dtype)
+
+    def rollout_to_model_input(
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
+    ) -> torch.Tensor:
+        if isinstance(rollout_buffer.observations, dict):
+            return {
+                k: self.process_observations(
+                    rollout_buffer.to_torch(rollout_buffer.observations[k])
+                )
+                for k in rollout_buffer.observations
+            }
+        else:
+            return self.process_observations(
+                rollout_buffer.to_torch(rollout_buffer.observations)
+            )
 
     def rollout_to_model_output(
         self,

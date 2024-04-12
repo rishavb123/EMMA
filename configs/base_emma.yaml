@@ -10,9 +10,6 @@ device: cuda
 log: true
 save_model: true
 record_policy_videos: true
-emma_wrapper_kwargs:
-    poi_emb_size: 0
-    per_step_poi_emb: false
 analysis:
     wandb_keys: 
         - global_step
