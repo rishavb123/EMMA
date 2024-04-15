@@ -25,10 +25,9 @@ model_kwargs:
         correct_key_color_idx: []
 policy_cls: stable_baselines3.ppo.MultiInputPolicy
 policy_kwargs:
-    activation_fn: torch.nn.Tanh
     net_arch:
         pi: [256, 64]
-        vi: [256, 64]
+        vf: [256, 64]
 wrapper_cls_lst:
     - minigrid.wrappers.OneHotPartialObsWrapper
     - minigrid.wrappers.ImgObsWrapper
