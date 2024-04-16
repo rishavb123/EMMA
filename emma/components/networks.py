@@ -1,6 +1,5 @@
-from typing import Any, Tuple
+from typing import Any, Callable, Tuple
 
-import numpy as np
 import torch
 from torch import nn
 
@@ -58,3 +57,32 @@ class VAE(nn.Module):
         z = self.reparameterization(mean=mean, std=std)
         x_hat = self.decoder(z)
         return x_hat, mean, logvar
+
+
+class PermutationInvariantNetwork(nn.Module):
+
+    def __init__(
+        self,
+        phi: nn.Module,
+        rho: nn.Module,
+        mixer: Callable[[torch.Tensor, int], torch.Tensor] | None = torch.mean,
+        *args,
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.phi = phi
+        self.mixer = mixer
+        self.rho = rho
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+
+        # x: (batch_size, set_size, *element_shape) or (set_size, *element_shape)
+        z = self.phi(x)
+        # z: (batch_size, set_size, hidden_size) or (set_size, hidden_size)
+        
+        mixdim = len(z.shape) - 2
+        if self.mixer:
+            z = self.mixer(z, dim=mixdim)
+
+        return self.rho(z)
+
