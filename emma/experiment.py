@@ -278,6 +278,9 @@ class EMMAAnalysis(BaseAnalysis):
                         run_df.loc[first_true, "global_step"]
                         - run_df.loc[cur_idx, "global_step"]
                     )
+                    results_values[f"asymptotic_performance"].append(
+                        objective[cur_idx:next_idx].min()
+                    )
 
                 # run_df["converged_signal"] = converged_signal
 
