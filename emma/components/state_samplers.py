@@ -20,7 +20,7 @@ class StateSampler(abc.ABC):
     def sample(self, cur_obs: Any, batch_size: int = 1) -> torch.Tensor:
         pass
 
-    def train(self, inp: torch.Tensor) -> np.ndarray:
+    def train(self, inp: torch.Tensor) -> Dict[str, Any]:
         return np.array(0.0)
 
 
@@ -69,7 +69,7 @@ class VAESampler(StateSampler):
     def sample(self, cur_obs: Any, batch_size: int = 1) -> torch.Tensor:
         return self.vae.sample(batch_size=batch_size, condition=cur_obs)
 
-    def train(self, inp: torch.Tensor) -> np.ndarray:
+    def train(self, inp: torch.Tensor) -> Dict[str, Any]:
         self.vae.train(mode=True)
         n_examples = inp.shape[0]
         eff_batch_size = min(n_examples, self.vae_train_batch_size)
@@ -78,7 +78,7 @@ class VAESampler(StateSampler):
 
         total_loss = 0.0
 
-        for _ in range(self.vae_train_epochs):
+        for epoch in range(self.vae_train_epochs):
             indices = torch.randperm(n_examples)
             for start_idx in range(0, n_examples, eff_batch_size):
                 end_idx = min(start_idx + eff_batch_size, n_examples)
@@ -90,6 +90,7 @@ class VAESampler(StateSampler):
                 loss.backward()
                 self.optimizer.step()
 
-                total_loss += loss.item() * (end_idx - start_idx)
+                if epoch == self.vae_train_epochs - 1:
+                    total_loss += loss.item() * (end_idx - start_idx)
 
-        return total_loss / (n_examples * self.vae_train_epochs)
+        return {"vae_loss": total_loss / n_examples}
