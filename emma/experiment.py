@@ -241,6 +241,9 @@ class EMMAAnalysis(BaseAnalysis):
         results_values = {
             f"convergence_efficiency_{env_idx}": []
             for env_idx in range(1 + len(self.cfg.transfer_steps))
+        } | {
+            f"asymptotic_performance_{env_idx}": []
+            for env_idx in range(1 + len(self.cfg.transfer_steps))
         }
 
         for experiment_id in df.index.get_level_values(0).unique():
@@ -278,7 +281,7 @@ class EMMAAnalysis(BaseAnalysis):
                         run_df.loc[first_true, "global_step"]
                         - run_df.loc[cur_idx, "global_step"]
                     )
-                    results_values[f"asymptotic_performance"].append(
+                    results_values[f"asymptotic_performance_{i}"].append(
                         objective[cur_idx:next_idx].min()
                     )
 
