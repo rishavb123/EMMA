@@ -43,6 +43,10 @@ The entry point is a hydra script, so any hydra overrides will work with this ru
 
 to run a `dev` experiment with `poi_emb_size` set to 0 and using an `MlpPolicy`.
 
+## Envs
+
+To add more environments to run experiments on, create a new file in the `emma/envs` folder and setup the gym enviornment there. Additionally, an external model trainer must be specified to specify the outputs of the external model. These outputs are specified by generating the model outputs for a rollout using the `rollout_to_model_output` function that should return the model output of shape `(batch_size, *model_output_shape)` where batch size is determined by the the size from the rollout_buffer (n_envs * n_steps). See `emma/envs/color_door_key.py` as an example.
+
 ## POI Algorithms
 
 ### POI Field Models
@@ -54,12 +58,10 @@ To create a new POI field models, go to the `emma/poi/poi_field.py` file and cre
 To create a new POI exploration algorithm, go to the `emma/poi/poi_exploration.py` file and create a new subclass of `POIPPO`. This is a subclass of the `PPO` class from `stable_baselines3`. This class can be changed in any way to modify agent behavior based on the poi model. Note that the poi values can be accessed by calling the `self.poi_model.calculate_poi_values` function. To construct the model input, use 
 
 ```python
-model_inp = (
-    self.poi_model.external_model_trainer.rollout_to_model_input(
-        env=env,
-        rollout_buffer=rollout_buffer,
-        info_buffer=self.info_buffer,
-    )
+self.poi_model.external_model_trainer.rollout_to_model_input(
+    env=env,
+    rollout_buffer=rollout_buffer,
+    info_buffer=self.info_buffer,
 )
 ```
 
