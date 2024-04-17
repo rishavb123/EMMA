@@ -89,12 +89,22 @@ poi_emb_learner:
                 - "${eval: ${obs_length} + 1 + ${poi_emb_learner.poi_emb_size}}"
                 - 750
                 - 400
+            layer_activations:
+                _target_: torch.nn.LeakyReLU
+                negative_slope: 0.01
+            final_activation:
+                _target_: torch.nn.Tanh
         rho:
             _target_: experiment_lab.common.networks.create_mlp_network
             layer_sizes:
                 - 400
                 - 300
                 - ${poi_emb_learner.poi_emb_size}
+            layer_activations:
+                _target_: torch.nn.LeakyReLU
+                negative_slope: 0.01
+            final_activation:
+                _target_: torch.nn.Tanh
         mixer:
             _target_: hydra.utils.get_method
             path: torch.mean
@@ -104,6 +114,11 @@ poi_emb_learner:
             - "${eval: ${obs_length} + ${poi_emb_learner.poi_emb_size}}"
             - 500
             - 1
+        layer_activations:
+            _target_: torch.nn.LeakyReLU
+            negative_slope: 0.01
+        final_activation:
+            _target_: torch.nn.ReLU
     num_poi_samples: 30
     num_eval_poi_samples: 30
     poi_emb_updates_per_generate: 5

@@ -79,10 +79,9 @@ class PermutationInvariantNetwork(nn.Module):
         # x: (batch_size, set_size, *element_shape) or (set_size, *element_shape)
         z = self.phi(x)
         # z: (batch_size, set_size, hidden_size) or (set_size, hidden_size)
-        
+
         mixdim = len(z.shape) - 2
         if self.mixer:
             z = self.mixer(z, dim=mixdim)
 
         return self.rho(z)
-

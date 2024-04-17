@@ -91,23 +91,30 @@ class SamplingPOILearner(POIEmbLearner):
         if self.poi_emb_size == 0:
             return np.array([])
 
-        for _ in range(self.poi_emb_updates_per_generate):
-            samples = self.state_sampler.sample(
-                cur_obs=cur_obs, batch_size=self.num_poi_samples
-            )  # (set_size, *obs_shape)
-            poi_data = torch.tensor(
-                self.poi_model.calculate_poi_values(samples),
-                device=self.device,
-                dtype=torch.float32,
-            ).unsqueeze(1)  # (set_size, 1)
+        with torch.no_grad():
+            for _ in range(self.poi_emb_updates_per_generate):
+                samples = self.state_sampler.sample(
+                    cur_obs=cur_obs, batch_size=self.num_poi_samples
+                )  # (set_size, *obs_shape)
+                poi_data = torch.tensor(
+                    self.poi_model.calculate_poi_values(samples),
+                    device=self.device,
+                    dtype=torch.float32,
+                ).unsqueeze(
+                    1
+                )  # (set_size, 1)
 
-            emb_update_inp = torch.cat(
-                (samples, poi_data, self.emb.repeat(self.num_poi_samples, 1)), dim=1
-            ).unsqueeze(0)  # (1, set_size, 1 + obs_shape)
+                emb_update_inp = torch.cat(
+                    (samples, poi_data, self.emb.repeat(self.num_poi_samples, 1)), dim=1
+                ).unsqueeze(
+                    0
+                )  # (1, set_size, 1 + obs_shape)
 
-            self.emb = self.emb + self.emb_update_model(emb_update_inp).squeeze(0)
+                self.emb = self.emb + self.emb_update_model(emb_update_inp).squeeze(0)
 
-        return self.emb.detach().cpu().numpy()
+                # print(self.emb.shape, torch.any(torch.isnan(self.emb))) # This printed true after some time
+
+        return self.emb.detach().cpu().numpy() # TODO: I think this is becoming nan at some point
 
     def train(self, inp: torch.Tensor | Dict[str, torch.Tensor]) -> Dict[str, Any]:
         if self.poi_emb_size == 0:
@@ -163,20 +170,21 @@ class SamplingPOILearner(POIEmbLearner):
             (batch_size, set_size, *obs_shape) = obs.shape
             (_batch_size, eval_set_size, *_obs_shape) = eval_obs.shape
 
-            poi_data = torch.tensor(
-                self.poi_model.calculate_poi_values(
-                    obs.reshape(batch_size * set_size, *obs_shape)
-                ).reshape((batch_size, set_size, 1)),
-                device=self.device,
-                dtype=torch.float32,
-            )
-            eval_poi_data = torch.tensor(
-                self.poi_model.calculate_poi_values(
-                    eval_obs.reshape(batch_size * eval_set_size, *obs_shape)
-                ).reshape((batch_size, eval_set_size, 1)),
-                device=self.device,
-                dtype=torch.float32,
-            )
+            with torch.no_grad():
+                poi_data = torch.tensor(
+                    self.poi_model.calculate_poi_values(
+                        obs.reshape(batch_size * set_size, *obs_shape)
+                    ).reshape((batch_size, set_size, 1)),
+                    device=self.device,
+                    dtype=torch.float32,
+                )
+                eval_poi_data = torch.tensor(
+                    self.poi_model.calculate_poi_values(
+                        eval_obs.reshape(batch_size * eval_set_size, *obs_shape)
+                    ).reshape((batch_size, eval_set_size, 1)),
+                    device=self.device,
+                    dtype=torch.float32,
+                )
 
             emb_update_inp = torch.cat(
                 (obs, poi_data, self.emb.repeat((batch_size, set_size, 1))),
@@ -207,7 +215,7 @@ class SamplingPOILearner(POIEmbLearner):
 
             self.optimizer.zero_grad()
             loss = self.loss_fn(all_poi_pred, all_poi)
-            loss.backward()
+            loss.backward(retain_graph=True)
             self.optimizer.step()
 
             total_loss += loss.item()
