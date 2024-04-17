@@ -53,7 +53,7 @@ class MCModule(nn.Module):
         if mean_dims == ():
             return stddevs
         else:
-            return stddevs.mean(dim=tuple(range(len(stddevs.shape)))[1:])
+            return stddevs.mean(dim=mean_dims)
 
     def forward_and_uncertainty_estimate(self, x: torch.Tensor) -> torch.Tensor:
         samples = self.generate_samples(x)
