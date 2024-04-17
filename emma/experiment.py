@@ -34,24 +34,28 @@ class EMMAConfig(RLConfig):
         default_factory=lambda: {"_target_": "emma.poi.poi_field.ZeroPOIField"}
     )
     poi_emb_learner: Dict[str, Any] | None = field(
-        default_factory=lambda: {"_target_": "emma.poi.poi_emb_learner.RandomEmb"}
+        default_factory=lambda: {
+            "_target_": "emma.poi.poi_emb_learner.RandomEmb",
+            "poi_emb_size": 64,
+        }
     )
     emma_wrapper_kwargs: Dict[str, Any] = field(default_factory=lambda: {})
 
     def __post_init__(self) -> None:
         super().__post_init__()
 
-        model_trainer = hydra.utils.instantiate(
+        model_trainer: ExternalModelTrainer = hydra.utils.instantiate(
             self.model_trainer,
             device=self.device,
         )
-        instantiated_poi_model = hydra.utils.instantiate(
+        instantiated_poi_model: POIFieldModel = hydra.utils.instantiate(
             self.poi_model, external_model_trainer=model_trainer
         )
-        instantiated_poi_emb_learner = hydra.utils.instantiate(
+        instantiated_poi_emb_learner: POIEmbLearner = hydra.utils.instantiate(
             self.poi_emb_learner,
         )
         instantiated_poi_emb_learner.set_device(self.device)
+        instantiated_poi_emb_learner.set_poi_model(self.poi_model)
 
         if self.callback_cls_lst is None:
             self.callback_cls_lst = []

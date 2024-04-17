@@ -80,6 +80,31 @@ poi_emb_learner:
             lr: 0.001
         vae_train_epochs: 1
         vae_train_batch_size: 256
+    emb_update_model:
+        _target_: emma.components.networks.PermutationInvariantNetwork
+        phi:
+            _target_: experiment_lab.common.networks.create_mlp_network
+            layer_sizes:
+                - 1045 # 980 + 1 + 64
+                - 500
+                - 100
+        rho:
+            _target_: experiment_lab.common.networks.create_mlp_network
+            layer_sizes:
+                - 100
+                - 80
+                - 64
+        mixer:
+            _target_: hydra.utils.get_method
+            path: torch.mean
+    frozen_poi_pred_model:
+        _target_: experiment_lab.common.networks.create_mlp_network
+        layer_sizes:
+            - 1044 # 980 + 64
+            - 500
+            - 1
+    num_poi_samples: 30
+    num_eval_poi_samples: 30
 emma_wrapper_kwargs:
     per_step_poi_emb: True
 total_time_steps: 10000000
