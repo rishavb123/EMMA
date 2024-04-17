@@ -32,6 +32,7 @@ wrapper_cls_lst:
     - minigrid.wrappers.OneHotPartialObsWrapper
     - minigrid.wrappers.ImgObsWrapper
     - gymnasium.wrappers.FlattenObservation
+obs_length: 980
 poi_emb_learner:
     _target_: emma.poi.poi_emb_learner.SamplingPOILearner
     poi_emb_size: 256
@@ -44,7 +45,7 @@ poi_emb_learner:
                 input_module:
                     _target_: experiment_lab.common.networks.create_mlp_network
                     layer_sizes:
-                        - 980
+                        - ${obs_length}
                         - 200
                         - 100
                     layer_activations:
@@ -66,7 +67,7 @@ poi_emb_learner:
                     - 32
                     - 100
                     - 200
-                    - 980
+                    - ${obs_length}
                 layer_activations:
                     _target_: torch.nn.LeakyReLU
                     negative_slope: 0.01
@@ -85,22 +86,22 @@ poi_emb_learner:
         phi:
             _target_: experiment_lab.common.networks.create_mlp_network
             layer_sizes:
-                - 1045 # 980 + 1 + 64
-                - 500
-                - 100
+                - "${eval: ${obs_length} + 1 + ${poi_emb_learner.poi_emb_size}}"
+                - 750
+                - 400
         rho:
             _target_: experiment_lab.common.networks.create_mlp_network
             layer_sizes:
-                - 100
-                - 80
-                - 64
+                - 400
+                - 300
+                - ${poi_emb_learner.poi_emb_size}
         mixer:
             _target_: hydra.utils.get_method
             path: torch.mean
     frozen_poi_pred_model:
         _target_: experiment_lab.common.networks.create_mlp_network
         layer_sizes:
-            - 1044 # 980 + 64
+            - "${eval: ${obs_length} + ${poi_emb_learner.poi_emb_size}}"
             - 500
             - 1
     num_poi_samples: 30

@@ -2,7 +2,7 @@ from typing import Any, Dict
 from dataclasses import dataclass, field
 import hydra
 from hydra.core.config_store import ConfigStore
-from omegaconf import MISSING
+from omegaconf import MISSING, OmegaConf
 import logging
 import pandas as pd
 import wandb
@@ -10,8 +10,9 @@ import wandb
 from stable_baselines3.common.callbacks import BaseCallback
 
 from experiment_lab.experiments.rl.environment import GeneralVecEnv
-from experiment_lab.experiments.rl import RLConfig, RLExperiment
+from experiment_lab.experiments.rl import RLConfig, RLExperiment, register_configs
 from experiment_lab.core import run_experiment, BaseAnalysis
+from experiment_lab.common.resolvers import register_resolvers
 
 from emma.poi.poi_field import POIFieldModel
 from emma.poi.poi_exploration import POIPPO
@@ -29,6 +30,8 @@ class EMMAConfig(RLConfig):
 
     model_trainer: Dict[str, Any] = MISSING
     n_eval_steps: int = 1280
+
+    obs_length: int = 147
 
     poi_model: Dict[str, Any] = field(
         default_factory=lambda: {"_target_": "emma.poi.poi_field.ZeroPOIField"}
@@ -327,12 +330,18 @@ def register_configs():
     cs.store(name="emma_config", node=EMMAConfig)
 
 
+def register_emma_resolvers():
+    register_resolvers()
+    OmegaConf.register_new_resolver("eval", eval)
+
+
 if __name__ == "__main__":
     run_experiment(
         experiment_cls=RLExperiment,
         config_cls=EMMAConfig,
         analysis_cls=EMMAAnalysis,
         register_configs=register_configs,
+        register_resolvers=register_emma_resolvers,
         config_name="key_prediction",
         config_path="./configs",
     )
