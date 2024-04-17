@@ -112,9 +112,7 @@ class SamplingPOILearner(POIEmbLearner):
 
                 self.emb = self.emb + self.emb_update_model(emb_update_inp).squeeze(0)
 
-                # print(self.emb.shape, torch.any(torch.isnan(self.emb))) # This printed true after some time
-
-        return self.emb.detach().cpu().numpy() # TODO: I think this is becoming nan at some point
+        return self.emb.detach().cpu().numpy()
 
     def train(self, inp: torch.Tensor | Dict[str, torch.Tensor]) -> Dict[str, Any]:
         if self.poi_emb_size == 0:
@@ -129,6 +127,7 @@ class SamplingPOILearner(POIEmbLearner):
 
         samples = []
         eval_samples = []
+
         for _ in range(self.poi_learner_epochs):
             for i in range(inp.shape[0]):
                 obs = inp[i]
