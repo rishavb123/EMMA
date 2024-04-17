@@ -6,6 +6,7 @@ from omegaconf import MISSING, OmegaConf
 import logging
 import pandas as pd
 import wandb
+import json
 
 from stable_baselines3.common.callbacks import BaseCallback
 
@@ -154,16 +155,17 @@ class EMMATrainerCallback(BaseCallback):
             env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
         ).to(device=self.model_trainer.device, dtype=self.model_trainer.dtype)
 
-        additional_metrics = self.poi_emb_learner.train(inp=inp)
-
         av_loss = self.model_trainer.receive_rollout(
             inp=inp,
             out=out,
         )
 
+        additional_metrics = self.poi_emb_learner.train(inp=inp)
+
         av_poi_value = self.poi_field_model.calculate_poi_values(model_inp=inp).mean()
 
         logger.info(f"Train - Av Loss: {av_loss}; Av POI per step: {av_poi_value}")
+        logger.info(json.dumps(additional_metrics))
 
         eval_av_loss = None
         eval_av_poi_value = None
