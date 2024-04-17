@@ -154,7 +154,7 @@ class EMMATrainerCallback(BaseCallback):
             env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
         ).to(device=self.model_trainer.device, dtype=self.model_trainer.dtype)
 
-        self.poi_emb_learner.train(inp=inp)
+        additional_metrics = self.poi_emb_learner.train(inp=inp)
 
         av_loss = self.model_trainer.receive_rollout(
             inp=inp,
@@ -229,6 +229,7 @@ class EMMATrainerCallback(BaseCallback):
             wandb_logs = {
                 "external_model_train/av_external_model_loss": av_loss,
                 "external_model_train/av_poi_per_step": av_poi_value,
+                **additional_metrics,
             }
             if eval_av_loss is not None:
                 wandb_logs["external_model_eval/av_external_model_loss"] = eval_av_loss
