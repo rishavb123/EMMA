@@ -123,7 +123,7 @@ poi_emb_learner:
     num_eval_poi_samples: 30
     poi_emb_updates_per_generate: 5
 emma_wrapper_kwargs:
-    per_step_poi_emb: True
+    per_step_poi_emb: False
 total_time_steps: 10000000
 transfer_steps:
     - 5000000

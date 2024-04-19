@@ -48,21 +48,9 @@ class EMMAWrapper(gym.ObservationWrapper):
         return obs, info
 
     def observation(self, observation: Any) -> Any:
-        if self.per_step_poi_emb:
-            if self.use_poi_emb:
-                if self.use_poi_emb:
-                    if self.current_poi_emb is None:
-                        self.current_poi_emb = np.zeros(
-                            self.poi_emb_learner.poi_emb_size, dtype=np.float32
-                        )
-                    self.generate_poi_emb(
-                        cur_obs={
-                            "state": observation,
-                            "poi_emb": self.current_poi_emb,
-                        }
-                    )
-                else:
-                    self.generate_poi_emb(cur_obs=observation)
+        if self.per_step_poi_emb or self.current_poi_emb is None:
+            self.generate_poi_emb(cur_obs=observation)
+
         if self.use_poi_emb:
             assert self.current_poi_emb is not None, "Current POI embedding is None!"
             return {
