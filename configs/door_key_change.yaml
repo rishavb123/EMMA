@@ -88,7 +88,7 @@ poi_emb_learner:
             layer_sizes:
                 - "${eval: ${obs_length} + 1 + ${poi_emb_learner.poi_emb_size}}"
                 - 750
-                - 400
+                - 300
             layer_activations:
                 _target_: torch.nn.LeakyReLU
                 negative_slope: 0.01
@@ -97,8 +97,8 @@ poi_emb_learner:
         rho:
             _target_: experiment_lab.common.networks.create_mlp_network
             layer_sizes:
-                - 400
                 - 300
+                - 200
                 - ${poi_emb_learner.poi_emb_size}
             layer_activations:
                 _target_: torch.nn.LeakyReLU
@@ -112,7 +112,7 @@ poi_emb_learner:
         _target_: experiment_lab.common.networks.create_mlp_network
         layer_sizes:
             - "${eval: ${obs_length} + ${poi_emb_learner.poi_emb_size}}"
-            - 500
+            - 250
             - 1
         layer_activations:
             _target_: torch.nn.LeakyReLU
