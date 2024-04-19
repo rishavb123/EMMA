@@ -79,6 +79,7 @@ class SamplingPOILearner(POIEmbLearner):
         self.poi_emb_updates_per_generate = poi_emb_updates_per_generate
 
         self.emb = torch.zeros((self.poi_emb_size,), dtype=torch.float32)
+        self.random_basis = [np.random.random((self.poi_emb_size)) for _ in range(5)]
 
     def set_device(self, device: str | None) -> None:
         super().set_device(device)
@@ -220,6 +221,10 @@ class SamplingPOILearner(POIEmbLearner):
             total_loss += loss.item()
 
         m["emb_update_model_loss"] = total_loss / n_examples
-        m["cur_emb_mag"] = float(self.emb.norm())
+
+        m["cur_emb/norm"] = float(self.emb.norm())
+        emb_np = self.emb.detach().cpu().numpy()
+        for i in range(len(self.random_basis)):
+            m[f"cur_emb/projection_{i}"] = np.dot(emb_np, self.random_basis[i])
 
         return m
