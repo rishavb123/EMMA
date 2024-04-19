@@ -220,5 +220,6 @@ class SamplingPOILearner(POIEmbLearner):
             total_loss += loss.item()
 
         m["emb_update_model_loss"] = total_loss / n_examples
+        m["cur_emb_mag"] = float(self.emb.norm())
 
         return m
