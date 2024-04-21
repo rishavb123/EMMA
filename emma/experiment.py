@@ -13,7 +13,6 @@ from stable_baselines3.common.callbacks import BaseCallback
 from experiment_lab.experiments.rl.environment import GeneralVecEnv
 from experiment_lab.experiments.rl import RLConfig, RLExperiment, register_configs
 from experiment_lab.core import run_experiment, BaseAnalysis
-from experiment_lab.common.resolvers import register_resolvers
 
 from emma.poi.poi_field import POIFieldModel
 from emma.poi.poi_exploration import POIPPO
@@ -333,18 +332,12 @@ def register_configs():
     cs.store(name="emma_config", node=EMMAConfig)
 
 
-def register_emma_resolvers():
-    register_resolvers()
-    OmegaConf.register_new_resolver("eval", eval)
-
-
 if __name__ == "__main__":
     run_experiment(
         experiment_cls=RLExperiment,
         config_cls=EMMAConfig,
         analysis_cls=EMMAAnalysis,
         register_configs=register_configs,
-        register_resolvers=register_emma_resolvers,
         config_name="key_prediction",
         config_path="./configs",
     )
