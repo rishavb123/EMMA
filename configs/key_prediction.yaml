@@ -8,6 +8,7 @@ model_trainer:
             layer_sizes:
                 - ${obs_length}
                 - 100
+                - 10
                 - 1
             layer_activations:
                 _target_: torch.nn.ReLU
