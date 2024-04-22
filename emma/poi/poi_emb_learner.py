@@ -198,6 +198,10 @@ class SamplingPOILearner(POIEmbLearner):
         indices = torch.randperm(n_examples)
 
         eff_batch_size = min(n_examples, self.poi_learner_batch_size)
+
+        import pdb
+
+        pdb.set_trace()
         if eff_batch_size == -1:
             eff_batch_size = n_examples
 
@@ -241,7 +245,7 @@ class SamplingPOILearner(POIEmbLearner):
             ) + self.emb_update_model(
                 emb_update_inp
             )  # (batch_size, emb_size)
-            new_embs = new_embs / new_embs.norm(dim=1)
+            new_embs = new_embs / new_embs.norm(dim=1).unsqueeze(dim=1)
 
             all_obs = torch.cat(
                 (obs, eval_obs), dim=1
