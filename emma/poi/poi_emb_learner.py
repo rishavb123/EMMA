@@ -5,7 +5,7 @@ import torch
 import hydra
 
 from emma.poi.poi_field import POIFieldModel
-from emma.components.networks import PermutationInvariantNetwork
+from emma.components.networks import PermutationInvariantNetwork, reset_weights
 from emma.components.state_samplers import StateSampler
 
 
@@ -14,6 +14,10 @@ class POIEmbLearner(abc.ABC):
     def __init__(self, poi_emb_size: int) -> None:
         super().__init__()
         self.poi_emb_size = poi_emb_size
+        self.device = None
+
+    def reset(self) -> None:
+        pass
 
     def set_poi_model(self, poi_model: POIFieldModel):
         self.poi_model = poi_model
@@ -60,10 +64,12 @@ class SamplingPOILearner(POIEmbLearner):
         self.state_sampler = state_sampler
         self.emb_update_model = emb_update_model
         self.frozen_poi_pred_model = frozen_poi_pred_model
+        self.optimizer_cls = optimizer_cls
+        self.optimizer_kwargs = optimizer_kwargs
         self.optimizer: torch.optim.Optimizer = hydra.utils.instantiate(
             {
-                "_target_": optimizer_cls,
-                **({} if optimizer_kwargs is None else optimizer_kwargs),
+                "_target_": self.optimizer_cls,
+                **({} if self.optimizer_kwargs is None else self.optimizer_kwargs),
             },
             params=self.emb_update_model.parameters(),
         )
@@ -78,16 +84,36 @@ class SamplingPOILearner(POIEmbLearner):
         self.poi_learner_epochs = poi_learner_epochs
         self.poi_learner_batch_size = poi_learner_batch_size
         self.poi_emb_updates_per_generate = poi_emb_updates_per_generate
+        self.poi_emb_num_projections = poi_emb_num_projections
+        self.reset_emb()
 
+    def reset_emb(self):
         self.emb = torch.randn((self.poi_emb_size,), dtype=torch.float32)
         self.emb = self.emb / self.emb.norm()
+        if self.device is not None:
+            self.emb = self.emb.to(self.device)
         self.random_basis = [
             u / np.linalg.norm(u)
             for u in [
                 np.random.random((self.poi_emb_size))
-                for _ in range(poi_emb_num_projections)
+                for _ in range(self.poi_emb_num_projections)
             ]
         ]
+
+    def reset(self) -> None:
+        super().reset()
+        self.reset_emb()
+        reset_weights(self.frozen_poi_pred_model)
+        reset_weights(self.emb_update_model)
+        reset_weights(self.loss_fn)
+        self.optimizer: torch.optim.Optimizer = hydra.utils.instantiate(
+            {
+                "_target_": self.optimizer_cls,
+                **({} if self.optimizer_kwargs is None else self.optimizer_kwargs),
+            },
+            params=self.emb_update_model.parameters(),
+        )
+        self.state_sampler.reset()
 
     def set_device(self, device: str | None) -> None:
         super().set_device(device)

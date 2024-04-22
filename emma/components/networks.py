@@ -85,3 +85,11 @@ class PermutationInvariantNetwork(nn.Module):
             z = self.mixer(z, dim=mixdim)
 
         return self.rho(z)
+
+
+def reset_weights(m: nn.Module):
+    def f(sub_m: nn.Module) -> None:
+        if hasattr(sub_m, "reset_parameters"):
+            sub_m.reset_parameters()
+
+    m.apply(fn=f)

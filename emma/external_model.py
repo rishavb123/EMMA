@@ -22,6 +22,8 @@ from stable_baselines3.common.torch_layers import (
 from torch.optim.adam import Adam as Adam
 from torch.optim.optimizer import Optimizer as Optimizer
 
+from emma.components.networks import reset_weights
+
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +185,11 @@ class ExternalModelTrainer(abc.ABC):
         self.loss_f = self.loss_type().to(device=device, dtype=dtype)
         self.batch_size = batch_size
         self.epochs_per_rollout = epochs_per_rollout
+
+    def reset(self) -> None:
+        if self.model is not None:
+            reset_weights(self.model)
+            self.set_model(self.model)
 
     def set_model(self, model: torch.nn.Module | None):
         if model is None:

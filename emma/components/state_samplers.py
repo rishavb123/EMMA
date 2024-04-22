@@ -5,12 +5,15 @@ import torch
 import hydra
 import numpy as np
 
-from emma.components.networks import VAE
+from emma.components.networks import VAE, reset_weights
 
 
 class StateSampler(abc.ABC):
 
     def __init__(self) -> None:
+        pass
+
+    def reset(self) -> None:
         pass
 
     def set_device(self, device: str | None) -> None:
@@ -52,15 +55,28 @@ class VAESampler(StateSampler):
     ) -> None:
         super().__init__()
         self.vae = vae
+        self.optimizer_cls = optimizer_cls
+        self.optimizer_kwargs = optimizer_kwargs
         self.optimizer: torch.optim.Optimizer = hydra.utils.instantiate(
             {
-                "_target_": optimizer_cls,
-                **({} if optimizer_kwargs is None else optimizer_kwargs),
+                "_target_": self.optimizer_cls,
+                **({} if self.optimizer_kwargs is None else self.optimizer_kwargs),
             },
             params=self.vae.parameters(),
         )
         self.vae_train_epochs = vae_train_epochs
         self.vae_train_batch_size = vae_train_batch_size
+
+    def reset(self) -> None:
+        super().reset()
+        reset_weights(self.vae)
+        self.optimizer: torch.optim.Optimizer = hydra.utils.instantiate(
+            {
+                "_target_": self.optimizer_cls,
+                **({} if self.optimizer_kwargs is None else self.optimizer_kwargs),
+            },
+            params=self.vae.parameters(),
+        )
 
     def set_device(self, device: str | None) -> None:
         super().set_device(device)

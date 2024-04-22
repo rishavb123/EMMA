@@ -15,6 +15,9 @@ class POIFieldModel(abc.ABC):
         super().__init__()
         self.external_model_trainer = external_model_trainer
 
+    def reset(self) -> None:
+        pass
+
     @abc.abstractmethod
     def calculate_poi_values(
         self,

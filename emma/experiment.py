@@ -47,18 +47,18 @@ class EMMAConfig(RLConfig):
     def __post_init__(self) -> None:
         super().__post_init__()
 
-        model_trainer: ExternalModelTrainer = hydra.utils.instantiate(
+        instantiated_model_trainer: ExternalModelTrainer = hydra.utils.instantiate(
             self.model_trainer,
             device=self.device,
         )
         instantiated_poi_model: POIFieldModel = hydra.utils.instantiate(
-            self.poi_model, external_model_trainer=model_trainer
+            self.poi_model, external_model_trainer=instantiated_model_trainer
         )
         instantiated_poi_emb_learner: POIEmbLearner = hydra.utils.instantiate(
             self.poi_emb_learner,
         )
         instantiated_poi_emb_learner.set_device(self.device)
-        instantiated_poi_emb_learner.set_poi_model(self.poi_model)
+        instantiated_poi_emb_learner.set_poi_model(instantiated_poi_model)
 
         if self.callback_cls_lst is None:
             self.callback_cls_lst = []
@@ -69,7 +69,7 @@ class EMMAConfig(RLConfig):
         self.callback_kwargs_lst.insert(
             0,
             {
-                "model_trainer": model_trainer,
+                "model_trainer": instantiated_model_trainer,
                 "poi_field_model": instantiated_poi_model,
                 "poi_emb_learner": instantiated_poi_emb_learner,
                 "n_eval_steps": self.n_eval_steps,
@@ -128,7 +128,10 @@ class EMMATrainerCallback(BaseCallback):
         return super()._on_step()
 
     def _on_training_start(self) -> None:
-        return super()._on_training_start()
+        super()._on_training_start()
+        self.model_trainer.reset()
+        self.poi_field_model.reset()
+        self.poi_emb_learner.reset()
 
     def _on_training_end(self) -> None:
         return super()._on_training_end()
