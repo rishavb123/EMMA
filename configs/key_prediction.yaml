@@ -16,7 +16,7 @@ model_trainer:
                 _target_: torch.nn.ReLU
             dropout_p: 0.5
         num_samples: 30
-    batch_size: 128
+    batch_size: 256
 defaults:
     - door_key_change
     - _self_
