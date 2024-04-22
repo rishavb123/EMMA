@@ -118,8 +118,11 @@ poi_emb_learner:
             negative_slope: 0.01
         final_activation:
             _target_: torch.nn.ReLU
-    num_poi_samples: 30
-    num_eval_poi_samples: 30
+    num_poi_samples: 20
+    num_eval_poi_samples: 10
+    poi_learner_batch_size: 128
+    poi_learner_epochs: 1
+    poi_learner_obs_subset: 0.25
     poi_emb_updates_per_generate: 5
 emma_wrapper_kwargs:
     per_step_poi_emb: False

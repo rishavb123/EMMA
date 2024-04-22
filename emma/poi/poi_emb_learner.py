@@ -56,6 +56,7 @@ class SamplingPOILearner(POIEmbLearner):
         optimizer_kwargs: Dict[str, Any] | None = None,
         loss_fn: torch.nn.Module | None = None,
         poi_learner_epochs: int = 1,
+        poi_learner_obs_subset: float = 1.0,
         poi_learner_batch_size: int = 256,
         poi_emb_updates_per_generate: int = 5,
         poi_emb_num_projections: int = 5,
@@ -85,6 +86,7 @@ class SamplingPOILearner(POIEmbLearner):
         self.poi_learner_batch_size = poi_learner_batch_size
         self.poi_emb_updates_per_generate = poi_emb_updates_per_generate
         self.poi_emb_num_projections = poi_emb_num_projections
+        self.poi_learner_obs_subset = poi_learner_obs_subset
         self.reset_emb()
 
     def reset_emb(self):
@@ -162,6 +164,12 @@ class SamplingPOILearner(POIEmbLearner):
         m = self.state_sampler.train(inp)
 
         # inp: (batch_size, *obs_shape)
+
+        inp = inp[
+            torch.randperm(inp.shape[0])[
+                : int(inp.shape[0] * self.poi_learner_obs_subset)
+            ]
+        ]
 
         samples = []
         eval_samples = []
