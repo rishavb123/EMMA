@@ -92,6 +92,7 @@ class EMMAConfig(RLConfig):
             {
                 "poi_model": instantiated_poi_model,
                 "poi_emb_learner": instantiated_poi_emb_learner,
+                "n_envs": self.n_envs,
                 **self.emma_wrapper_kwargs,
             }
         )
@@ -132,6 +133,7 @@ class EMMATrainerCallback(BaseCallback):
         self.model_trainer.reset()
         self.poi_field_model.reset()
         self.poi_emb_learner.reset()
+        self.model_trainer.set_agent(self.model)
 
     def _on_training_end(self) -> None:
         return super()._on_training_end()
@@ -144,8 +146,6 @@ class EMMATrainerCallback(BaseCallback):
         self.model: POIPPO  # Just adding a type annotation
 
         env: GeneralVecEnv = self.model.get_env()
-
-        self.model_trainer.set_agent(self.model)
 
         rollout_buffer = self.model.rollout_buffer
         info_buffer = self.model.info_buffer

@@ -5,6 +5,7 @@ import torch
 import hydra
 
 from emma.poi.poi_field import POIFieldModel
+from emma.poi.poi_exploration import POIPPO, POISkillSamplingDiaynPPO
 from emma.components.networks import PermutationInvariantNetwork, reset_weights
 from emma.components.state_samplers import StateSampler
 
@@ -22,11 +23,15 @@ class POIEmbLearner(abc.ABC):
     def set_poi_model(self, poi_model: POIFieldModel):
         self.poi_model = poi_model
 
+    def set_agent(self, agent: POIPPO):
+        # self.agent = agent
+        pass
+
     def set_device(self, device: str | None) -> None:
         self.device = device
 
     @abc.abstractmethod
-    def generate_poi_emb(self, cur_obs: Any) -> np.ndarray:
+    def generate_poi_emb(self, cur_obs: Any, timestep: int) -> np.ndarray:
         pass
 
     def train(self, inp: torch.Tensor) -> Dict[str, Any]:
@@ -38,8 +43,8 @@ class RandomEmb(POIEmbLearner):
     def __init__(self, poi_emb_size: int) -> None:
         super().__init__(poi_emb_size)
 
-    def generate_poi_emb(self, cur_obs: Any) -> np.ndarray:
-        return np.random.normal(size=(self.poi_emb_size))
+    def generate_poi_emb(self, cur_obs: Any, timestep: int) -> np.ndarray:
+        return np.random.uniform(low=0, high=1, size=(self.poi_emb_size))
 
 
 class SamplingPOILearner(POIEmbLearner):
@@ -124,7 +129,7 @@ class SamplingPOILearner(POIEmbLearner):
         self.frozen_poi_pred_model = self.frozen_poi_pred_model.to(device)
         self.emb = self.emb.to(self.device)
 
-    def generate_poi_emb(self, cur_obs: Any) -> np.ndarray:
+    def generate_poi_emb(self, cur_obs: Any, timestep: int) -> np.ndarray:
         if self.poi_emb_size == 0:
             return np.array([])
 
@@ -274,3 +279,68 @@ class SamplingPOILearner(POIEmbLearner):
             m[f"cur_emb/projection_{i}"] = np.dot(emb_np, self.random_basis[i])
 
         return m
+
+
+class POISkillManager(POIEmbLearner):
+
+    def __init__(
+        self,
+        state_sampler: StateSampler,
+        n_samples: int,
+        poi_emb_size: int,
+        uniform_skill_prior_warmstart: int = 0,
+    ) -> None:
+        super().__init__(poi_emb_size)
+        self.state_sampler = state_sampler
+        self.n_samples = n_samples
+        self.uniform_skill_prior_warmstart = uniform_skill_prior_warmstart
+        self.softmax = torch.nn.Softmax()
+        self.discriminator = None
+
+    def reset(self) -> None:
+        super().reset()
+        self.state_sampler.reset()
+
+    def set_agent(self, agent: POISkillSamplingDiaynPPO):
+        self.discriminator = agent.discriminator
+
+    def set_device(self, device: str | None) -> None:
+        super().set_device(device)
+        self.state_sampler.set_device(device=device)
+
+    def generate_poi_emb(self, cur_obs: Any, timestep: int) -> np.ndarray:
+        if timestep < self.uniform_skill_prior_warmstart or self.discriminator is None:
+            skill_idx = torch.randint(low=0, high=self.poi_emb_size, size=(1,))
+            sampled_skill = torch.zeros(size=(self.poi_emb_size,), dtype=torch.float32)
+            sampled_skill[skill_idx] = 1.0
+            return sampled_skill.cpu().numpy()
+        else:
+            samples = self.state_sampler.sample(
+                cur_obs=cur_obs, batch_size=self.n_samples
+            )  # (n_samples, *obs_shape)
+            pois = torch.tensor(
+                self.poi_model.calculate_poi_values(samples),
+                device=self.device,
+                dtype=torch.float32,
+            )  # (n_samples, )
+
+            skills: torch.Tensor = self.discriminator(
+                samples
+            )  # (n_samples, skill_size)
+
+            counts = skills.sum(dim=0)  # (skill_size, )
+            counts[counts == 0] = 1.0
+
+            average_poi_per_skill = (
+                torch.sum(skills * pois.unsqueeze(dim=1), dim=0) / counts
+            )  # (skill_size, )
+            skill_probs = self.softmax(average_poi_per_skill, dim=0)  # (skill_size, )
+
+            skill_idx = torch.multinomial(input=skill_probs, num_samples=1)
+            sampled_skill = torch.zeros_like(skill_probs)
+            sampled_skill[skill_idx] = 1
+
+            return sampled_skill.cpu().numpy()
+
+    def train(self, inp: torch.Tensor) -> Dict[str, Any]:
+        return self.state_sampler.train(inp=inp)

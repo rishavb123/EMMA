@@ -1,0 +1,5 @@
+experiment_name: ir_key_prediction_door_key_change
+model_cls: emma.poi.poi_exploration.POISkillSamplingDiaynPPO
+defaults:
+    - key_prediction
+    - _self_
