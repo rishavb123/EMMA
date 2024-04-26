@@ -3,6 +3,7 @@ model_cls: emma.poi.poi_exploration.POIInstrinsicRewardPPO
 model_kwargs:
     beta: 0.1
 defaults:
-    - kp_expl_intrinsic_reward
+    - door_key_change
+    - model_trainer/key_prediction
     - poi_model/disagreement
     - _self_
