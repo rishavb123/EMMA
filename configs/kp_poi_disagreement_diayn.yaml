@@ -1,6 +1,4 @@
 experiment_name: disagreement_diayn_key_prediction_door_key_change
-poi_model:
-    _target_: emma.poi.poi_field.DisagreementPOIField
 model_kwargs:
     beta: 0.01
     discriminator:
@@ -17,55 +15,7 @@ model_kwargs:
     discriminator_optimizer_cls: torch.optim.Adam
     discriminator_optimizer_kwargs: null
     discriminator_batch_size: 128
-poi_emb_learner:
-    _target_: emma.poi.poi_emb_learner.POISkillManager
-    poi_emb_size: 20
-    n_samples: 1000
-    state_sampler:
-        _target_: emma.components.state_samplers.VAESampler
-        vae:
-            _target_: emma.components.networks.VAE
-            encoder:
-                _target_: experiment_lab.common.networks.create_multi_network
-                input_module:
-                    _target_: experiment_lab.common.networks.create_mlp_network
-                    layer_sizes:
-                        - ${obs_length}
-                        - 200
-                        - 100
-                    layer_activations:
-                        _target_: torch.nn.LeakyReLU
-                        negative_slope: 0.01
-                    final_activation:
-                        _target_: torch.nn.LeakyReLU
-                        negative_slope: 0.01
-                module_lst:
-                    - _target_: torch.nn.Linear
-                      in_features: 100
-                      out_features: 32
-                    - _target_: torch.nn.Linear
-                      in_features: 100
-                      out_features: 32
-            decoder:
-                _target_: experiment_lab.common.networks.create_mlp_network
-                layer_sizes:
-                    - 32
-                    - 100
-                    - 200
-                    - ${obs_length}
-                layer_activations:
-                    _target_: torch.nn.LeakyReLU
-                    negative_slope: 0.01
-                final_activation:
-                    _target_: torch.nn.Sigmoid
-            latent_dim: 32
-            reconstruction_loss_f:
-                _target_: torch.nn.BCELoss
-        optimizer_cls: torch.optim.Adam
-        optimizer_kwargs:
-            lr: 0.001
-        vae_train_epochs: 1
-        vae_train_batch_size: 256
 defaults:
     - kp_expl_diayn
+    - poi_model/disagreement
     - _self_

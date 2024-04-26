@@ -4,8 +4,7 @@ policy_kwargs:
     mlp_extractor_dropout_p: 0.5
     mlp_extractor_num_samples: 30
 n_eval_steps: 0
-model_trainer:
-    _target_: emma.external_model.PolicyTrainer
 defaults:
     - door_key_change
+    - model_trainer/policy
     - _self_
