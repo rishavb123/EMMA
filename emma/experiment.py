@@ -36,10 +36,10 @@ class EMMAConfig(RLConfig):
     poi_model: Dict[str, Any] = field(
         default_factory=lambda: {"_target_": "emma.poi.poi_field.ZeroPOIField"}
     )
-    poi_emb_learner: Dict[str, Any] | None = field(
+    poi_emb_learner: Dict[str, Any] = field(
         default_factory=lambda: {
             "_target_": "emma.poi.poi_emb_learner.RandomEmb",
-            "poi_emb_size": 64,
+            "poi_emb_size": 0,
         }
     )
     emma_wrapper_kwargs: Dict[str, Any] = field(default_factory=lambda: {})
