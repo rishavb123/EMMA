@@ -23,7 +23,7 @@ model_kwargs:
     max_grad_norm: 0.5
     infos_to_save:
         correct_key_color_idx: []
-policy_cls: stable_baselines3.ppo.MultiInputPolicy
+policy_cls: stable_baselines3.ppo.MlpPolicy
 policy_kwargs:
     net_arch:
         pi: [256, 64]

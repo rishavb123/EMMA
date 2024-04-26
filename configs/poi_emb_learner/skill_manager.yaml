@@ -1,5 +1,5 @@
 _target_: emma.poi.poi_emb_learner.POISkillManager
-poi_emb_size: 20
+poi_emb_size: 5
 n_samples: 1000
 state_sampler:
     _target_: emma.components.state_samplers.VAESampler

@@ -16,8 +16,10 @@ model_kwargs:
     discriminator_optimizer_cls: torch.optim.Adam
     discriminator_optimizer_kwargs: null
     discriminator_batch_size: 128
+policy_cls: stable_baselines3.ppo.MultiInputPolicy
 defaults:
     - door_key_change
     - model_trainer/key_prediction
     - poi_model/disagreement
+    - poi_emb_learner/skill_manager
     - _self_
