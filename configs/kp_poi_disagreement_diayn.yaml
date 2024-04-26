@@ -1,4 +1,5 @@
 experiment_name: disagreement_diayn_key_prediction_door_key_change
+model_cls: emma.poi.poi_exploration.POISkillSamplingDiaynPPO
 model_kwargs:
     beta: 0.01
     discriminator:
@@ -16,6 +17,7 @@ model_kwargs:
     discriminator_optimizer_kwargs: null
     discriminator_batch_size: 128
 defaults:
-    - kp_expl_diayn
+    - door_key_change
+    - model_trainer/key_prediction
     - poi_model/disagreement
     - _self_
