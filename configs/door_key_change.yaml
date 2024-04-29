@@ -23,6 +23,8 @@ model_kwargs:
     max_grad_norm: 0.5
     infos_to_save:
         correct_key_color_idx: []
+        agent_x: []
+        agent_y: []
 policy_cls: stable_baselines3.ppo.MlpPolicy
 policy_kwargs:
     net_arch:

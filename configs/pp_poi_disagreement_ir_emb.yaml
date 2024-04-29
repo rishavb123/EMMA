@@ -1,0 +1,11 @@
+experiment_name: disagreement_ir_emb_pos_prediction_door_key_change
+model_cls: emma.poi.poi_exploration.POIInstrinsicRewardPPO
+model_kwargs:
+    beta: 0.1
+policy_cls: stable_baselines3.ppo.MultiInputPolicy
+defaults:
+    - door_key_change
+    - model_trainer/position_prediction
+    - poi_model/disagreement
+    - poi_emb_learner/sampling_poi_emb
+    - _self_

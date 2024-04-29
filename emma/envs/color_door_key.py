@@ -74,6 +74,8 @@ class ColoredDoorKeyEnv(MiniGridEnv):
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
         info["correct_key_color_idx"] = COLOR_TO_IDX[self.correct_key_color]
+        info["agent_x"] = self.agent_pos[0]
+        info["agent_y"] = self.agent_pos[1]
         return obs, reward, terminated, truncated, info
 
     def _gen_grid(self, width: int, height: int):
@@ -204,3 +206,39 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
             min_dists.append(min_dist)
 
         return torch.tensor(min_dists, device=self.device, dtype=self.dtype)[:, None]
+
+
+class PositionPredictor(ExternalModelTrainer):
+
+    def __init__(
+        self,
+        model: Module | None,
+        device: str,
+        loss_type: type[Module] = torch.nn.MSELoss,
+        optimizer_cls: str = "torch.optim.Adam",
+        optimizer_kwargs: Dict[str, Any] | None = None,
+        batch_size: int = 128,
+        epochs_per_rollout: int = 1,
+        dtype=torch.float32,
+    ) -> None:
+        super().__init__(
+            model,
+            device,
+            loss_type,
+            optimizer_cls,
+            optimizer_kwargs,
+            batch_size,
+            epochs_per_rollout,
+            dtype,
+        )
+
+    def rollout_to_model_output(
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
+    ) -> torch.Tensor:
+        agent_x = rollout_buffer.to_torch(info_buffer["agent_x"]).flatten(end_dim=1)
+        agent_y = rollout_buffer.to_torch(info_buffer["agent_y"]).flatten(end_dim=1)
+
+        return torch.stack((agent_x, agent_y), dim=1)

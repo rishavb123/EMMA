@@ -1,0 +1,17 @@
+_target_: emma.envs.color_door_key.PositionPredictor
+model:
+    _target_: emma.external_model.MCModule
+    inner_module:
+        _target_: experiment_lab.common.networks.create_mlp_network
+        layer_sizes:
+            - ${obs_length}
+            - 100
+            - 10
+            - 1
+        layer_activations:
+            _target_: torch.nn.ReLU
+        final_activation:
+            _target_: torch.nn.ReLU
+        dropout_p: 0.5
+    num_samples: 30
+batch_size: 256
