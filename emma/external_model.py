@@ -368,29 +368,3 @@ class PolicyTrainer(ExternalModelTrainer):
         # Policy is handled by stable baselines
         # Further, better eval is the mean rewards that are already logged
         return np.array(0)
-
-
-class FowardDynamicsModelling(ExternalModelTrainer):
-
-    def __init__(
-        self,
-        model: nn.Module | None,
-        device: str,
-        loss_type: nn.Module,
-        optimizer_cls: str = "torch.optim.Adam",
-        optimizer_kwargs: Dict[str, Any] | None = None,
-        batch_size: int = 128,
-        epochs_per_rollout: int = 1,
-        dtype=torch.float32,
-    ) -> None:
-        super().__init__(
-            model,
-            device,
-            loss_type,
-            optimizer_cls,
-            optimizer_kwargs,
-            batch_size,
-            epochs_per_rollout,
-            dtype,
-        )
-        # TODO: write this
