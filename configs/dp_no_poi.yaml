@@ -1,7 +1,7 @@
-experiment_name: pos_prediction_door_key_change
+experiment_name: dir_prediction_door_key_change
 model_cls: emma.poi.poi_exploration.POIAgnosticPPO
 defaults:
     - door_key_change
-    - model_trainer/position_prediction
+    - model_trainer/direction_prediction
     - poi_model/zero
     - _self_

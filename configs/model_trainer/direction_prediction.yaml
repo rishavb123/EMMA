@@ -1,4 +1,4 @@
-_target_: emma.envs.color_door_key.PositionPredictor
+_target_: emma.envs.color_door_key.DirectionPredictor
 model:
     _target_: emma.external_model.MCModule
     inner_module:

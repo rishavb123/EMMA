@@ -25,6 +25,7 @@ model_kwargs:
         correct_key_color_idx: []
         agent_x: []
         agent_y: []
+        agent_dir: []
 policy_cls: stable_baselines3.ppo.MlpPolicy
 policy_kwargs:
     net_arch:

@@ -1,4 +1,4 @@
-experiment_name: disagreement_diayn_pos_prediction_door_key_change
+experiment_name: disagreement_diayn_dir_prediction_door_key_change
 model_cls: emma.poi.poi_exploration.POISkillSamplingDiaynPPO
 model_kwargs:
     beta: 0.1
@@ -19,7 +19,7 @@ model_kwargs:
 policy_cls: stable_baselines3.ppo.MultiInputPolicy
 defaults:
     - door_key_change
-    - model_trainer/position_prediction
+    - model_trainer/direction_prediction
     - poi_model/disagreement
     - poi_emb_learner/skill_manager
     - _self_

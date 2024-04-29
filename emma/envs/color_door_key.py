@@ -4,6 +4,7 @@ import logging
 from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.vec_env import VecEnv
 import torch
+import torch.nn.functional as F
 import numpy as np
 
 from minigrid.core.constants import COLOR_TO_IDX, OBJECT_TO_IDX
@@ -76,6 +77,7 @@ class ColoredDoorKeyEnv(MiniGridEnv):
         info["correct_key_color_idx"] = COLOR_TO_IDX[self.correct_key_color]
         info["agent_x"] = self.agent_pos[0]
         info["agent_y"] = self.agent_pos[1]
+        info["agent_dir"] = self.agent_dir
         return obs, reward, terminated, truncated, info
 
     def _gen_grid(self, width: int, height: int):
@@ -208,7 +210,7 @@ class CorrectKeyDistancePredictor(ExternalModelTrainer):
         return torch.tensor(min_dists, device=self.device, dtype=self.dtype)[:, None]
 
 
-class PositionPredictor(ExternalModelTrainer):
+class DirectionPredictor(ExternalModelTrainer):
 
     def __init__(
         self,
@@ -238,7 +240,5 @@ class PositionPredictor(ExternalModelTrainer):
         rollout_buffer: RolloutBuffer,
         info_buffer: Dict[str, np.ndarray],
     ) -> torch.Tensor:
-        agent_x = rollout_buffer.to_torch(info_buffer["agent_x"]).flatten(end_dim=1)
-        agent_y = rollout_buffer.to_torch(info_buffer["agent_y"]).flatten(end_dim=1)
-
-        return torch.stack((agent_x, agent_y), dim=1)
+        agent_dir = rollout_buffer.to_torch(info_buffer["agent_dir"]).flatten(end_dim=1)
+        return F.one_hot(agent_dir, num_classes=7)

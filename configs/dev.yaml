@@ -7,5 +7,5 @@ device: mps
 total_time_steps: 100
 n_runs: 2
 defaults:
-    - pp_poi_disagreement_ir
+    - dp_poi_disagreement_ir
     - _self_
