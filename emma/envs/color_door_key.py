@@ -240,5 +240,9 @@ class DirectionPredictor(ExternalModelTrainer):
         rollout_buffer: RolloutBuffer,
         info_buffer: Dict[str, np.ndarray],
     ) -> torch.Tensor:
-        agent_dir = rollout_buffer.to_torch(info_buffer["agent_dir"]).flatten(end_dim=1)
+        agent_dir = (
+            rollout_buffer.to_torch(info_buffer["agent_dir"])
+            .flatten(end_dim=1)
+            .to(dtype=torch.long)
+        )
         return F.one_hot(agent_dir, num_classes=7)

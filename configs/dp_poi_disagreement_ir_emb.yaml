@@ -1,7 +1,7 @@
 experiment_name: disagreement_ir_emb_dir_prediction_door_key_change
 model_cls: emma.poi.poi_exploration.POIInstrinsicRewardPPO
 model_kwargs:
-    beta: 0.2
+    beta: 2
 policy_cls: stable_baselines3.ppo.MultiInputPolicy
 defaults:
     - door_key_change
