@@ -175,6 +175,7 @@ class ExternalModelTrainer(abc.ABC):
         batch_size: int = 128,
         epochs_per_rollout: int = 1,
         dtype=torch.float32,
+        action_to_model: bool = False,
     ) -> None:
         self.device = device
         self.dtype = dtype
@@ -185,6 +186,7 @@ class ExternalModelTrainer(abc.ABC):
         self.loss_f = self.loss_type().to(device=device, dtype=dtype)
         self.batch_size = batch_size
         self.epochs_per_rollout = epochs_per_rollout
+        self.action_to_model = action_to_model
 
     def reset(self) -> None:
         if self.model is not None:
@@ -208,22 +210,41 @@ class ExternalModelTrainer(abc.ABC):
         # self.agent = agent
         pass
 
+    def predict(self, states, actions=None):
+        if self.action_to_model:
+            assert actions is not None, "Actions cannot be none"
+            return self.model(states)
+        else:
+            return self.model((states, actions))
+
     def process_observations(self, observations: torch.Tensor) -> torch.Tensor:
         # Converts observations from shape (batch_size, n_envs, ...) to (batch_size * n_envs, ...)
         return observations.flatten(end_dim=1)
+
+    def process_actions(self, actions: torch.Tensor) -> torch.Tensor:
+        # Converts observations from shape (batch_size, n_envs, ...) to (batch_size * n_envs, ...)
+        return actions.flatten(end_dim=1)
 
     def rollout_to_model_input(
         self,
         env: VecEnv,
         rollout_buffer: RolloutBuffer,
         info_buffer: Dict[str, np.ndarray],
-    ) -> torch.Tensor:
+    ) -> torch.Tensor | Tuple[torch.Tensor, torch.Tensor]:
         observations = (
             rollout_buffer.observations["state"]
             if isinstance(rollout_buffer.observations, dict)
             else rollout_buffer.observations
         )
-        return self.process_observations(rollout_buffer.to_torch(observations))
+        if self.action_to_model:
+            actions = rollout_buffer.actions
+            return self.process_observations(
+                rollout_buffer.to_torch(observations)
+            ), self.process_actions(rollout_buffer.to_torch(actions))
+        else:
+            return self.process_observations(
+                rollout_buffer.to_torch(observations)
+            ), self.process_actions(rollout_buffer.to_torch(actions))
 
     @abc.abstractmethod
     def rollout_to_model_output(
@@ -260,11 +281,14 @@ class ExternalModelTrainer(abc.ABC):
 
                 idx = indices[start_idx:end_idx]
 
-                data = inp[idx]
+                if self.action_to_model:
+                    data = inp[0][idx], inp[1][idx]
+                else:
+                    data = inp[idx]
                 self.optimizer.zero_grad()
 
                 pred_out = self.model(data)
-                loss = self.loss_f(out[idx], pred_out)
+                loss: torch.Tensor = self.loss_f(out[idx], pred_out)
 
                 loss.backward()
                 self.optimizer.step()
@@ -275,7 +299,7 @@ class ExternalModelTrainer(abc.ABC):
 
     def calc_loss(
         self,
-        inp: torch.Tensor,
+        inp: torch.Tensor | Tuple[torch.Tensor, torch.Tensor],
         out: torch.Tensor,
     ):
         if self.model is None:

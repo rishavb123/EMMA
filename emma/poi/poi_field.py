@@ -64,10 +64,10 @@ class ModelGradientPOIField(POIFieldModel):
 
     def calculate_poi_values(
         self,
-        model_inp: torch.Tensor,
+        model_inp: torch.Tensor | Tuple[torch.Tensor, torch.Tensor],
     ) -> np.ndarray:
         self.external_model_trainer.model.train(mode=False)
-        model_out = self.external_model_trainer.model(model_inp)
+        model_out = self.external_model_trainer.predict(model_inp)
 
         grad_lst = []
 
