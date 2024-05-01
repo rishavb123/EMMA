@@ -1,4 +1,4 @@
-experiment_name: disagreement_ir_emb_key_prediction_door_key_change
+experiment_name: disagreement_ir_emb_policy_door_key_change
 model_cls: emma.poi.poi_exploration.POIInstrinsicRewardPPO
 model_kwargs:
     beta: 0.1

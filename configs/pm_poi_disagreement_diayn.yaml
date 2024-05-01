@@ -1,4 +1,4 @@
-experiment_name: disagreement_diayn_dir_prediction_door_key_change
+experiment_name: disagreement_diayn_policy_door_key_change
 model_cls: emma.poi.poi_exploration.POISkillSamplingDiaynPPO
 model_kwargs:
     beta: 0.1
