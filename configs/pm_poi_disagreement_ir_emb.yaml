@@ -8,4 +8,3 @@ defaults:
     - poi_model/disagreement
     - poi_emb_learner/sampling_poi_emb
     - _self_
-    - dev
