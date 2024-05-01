@@ -2,6 +2,7 @@ from typing import Any, Dict, Tuple
 import abc
 import numpy as np
 import torch
+import torch.nn.functional as F
 import hydra
 
 from emma.poi.poi_field import POIFieldModel
@@ -133,13 +134,21 @@ class SamplingPOILearner(POIEmbLearner):
         if self.poi_emb_size == 0:
             return np.array([])
 
+        old_emb = self.emb.detach().clone().repeat(self.num_poi_samples, 1)
+
         with torch.no_grad():
             for _ in range(self.poi_emb_updates_per_generate):
                 samples = self.state_sampler.sample(
                     cur_obs=cur_obs, batch_size=self.num_poi_samples
                 )  # (set_size, *obs_shape)
+
+                if self.poi_model.external_model_trainer.keep_conditions:
+                    inp = {"state": samples, "poi_emb": old_emb}
+                else:
+                    inp = samples
+
                 poi_data = torch.tensor(
-                    self.poi_model.calculate_poi_values(samples),
+                    self.poi_model.calculate_poi_values(inp),
                     device=self.device,
                     dtype=torch.float32,
                 ).unsqueeze(
@@ -220,18 +229,40 @@ class SamplingPOILearner(POIEmbLearner):
             (batch_size, set_size, *obs_shape) = obs.shape
             (_batch_size, eval_set_size, *_obs_shape) = eval_obs.shape
 
+            old_emb = self.emb.detach().clone().repeat(batch_size * set_size, 1)
+            old_emb_eval = (
+                self.emb.detach().clone().repeat(batch_size * eval_set_size, 1)
+            )
+
             with torch.no_grad():
+                if self.poi_model.external_model_trainer.keep_conditions:
+                    inp = {
+                        "state": obs.reshape(batch_size * set_size, *obs_shape),
+                        "poi_emb": old_emb,
+                    }
+                else:
+                    inp = obs.reshape(batch_size * set_size, *obs_shape)
+                if self.poi_model.external_model_trainer.keep_conditions:
+                    eval_inp = {
+                        "state": eval_obs.reshape(
+                            batch_size * eval_set_size, *obs_shape
+                        ),
+                        "poi_emb": old_emb_eval,
+                    }
+                else:
+                    eval_inp = eval_obs.reshape(batch_size * eval_set_size, *obs_shape)
+
                 poi_data = torch.tensor(
-                    self.poi_model.calculate_poi_values(
-                        obs.reshape(batch_size * set_size, *obs_shape)
-                    ).reshape((batch_size, set_size, 1)),
+                    self.poi_model.calculate_poi_values(inp).reshape(
+                        (batch_size, set_size, 1)
+                    ),
                     device=self.device,
                     dtype=torch.float32,
                 )
                 eval_poi_data = torch.tensor(
-                    self.poi_model.calculate_poi_values(
-                        eval_obs.reshape(batch_size * eval_set_size, *obs_shape)
-                    ).reshape((batch_size, eval_set_size, 1)),
+                    self.poi_model.calculate_poi_values(eval_inp).reshape(
+                        (batch_size, eval_set_size, 1)
+                    ),
                     device=self.device,
                     dtype=torch.float32,
                 )
@@ -265,7 +296,7 @@ class SamplingPOILearner(POIEmbLearner):
             )  # (batch_size, set_size + eval_set_size, 1)
 
             self.optimizer.zero_grad()
-            loss = self.loss_fn(all_poi_pred, all_poi)
+            loss: torch.Tensor = self.loss_fn(all_poi_pred, all_poi)
             loss.backward(retain_graph=True)
             self.optimizer.step()
 
@@ -294,7 +325,6 @@ class POISkillManager(POIEmbLearner):
         self.state_sampler = state_sampler
         self.n_samples = n_samples
         self.uniform_skill_prior_warmstart = uniform_skill_prior_warmstart
-        self.softmax = torch.nn.Softmax()
         self.discriminator = None
 
     def reset(self) -> None:
@@ -318,15 +348,21 @@ class POISkillManager(POIEmbLearner):
             samples = self.state_sampler.sample(
                 cur_obs=cur_obs, batch_size=self.n_samples
             )  # (n_samples, *obs_shape)
-            pois = torch.tensor(
-                self.poi_model.calculate_poi_values(samples),
-                device=self.device,
-                dtype=torch.float32,
-            )  # (n_samples, )
 
             skills: torch.Tensor = self.discriminator(
                 samples
             )  # (n_samples, skill_size)
+
+            if self.poi_model.external_model_trainer.keep_conditions:
+                inp = {"state": samples, "poi_emb": skills}
+            else:
+                inp = samples
+
+            pois = torch.tensor(
+                self.poi_model.calculate_poi_values(inp),
+                device=self.device,
+                dtype=torch.float32,
+            )  # (n_samples, )
 
             counts = skills.sum(dim=0)  # (skill_size, )
             counts[counts == 0] = 1.0
@@ -334,7 +370,7 @@ class POISkillManager(POIEmbLearner):
             average_poi_per_skill = (
                 torch.sum(skills * pois.unsqueeze(dim=1), dim=0) / counts
             )  # (skill_size, )
-            skill_probs = self.softmax(average_poi_per_skill, dim=0)  # (skill_size, )
+            skill_probs = F.softmax(average_poi_per_skill, dim=0)  # (skill_size, )
 
             skill_idx = torch.multinomial(input=skill_probs, num_samples=1)
             sampled_skill = torch.zeros_like(skill_probs)

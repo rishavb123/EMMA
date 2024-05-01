@@ -46,3 +46,4 @@ state_sampler:
         lr: 0.001
     vae_train_epochs: 1
     vae_train_batch_size: 256
+uniform_skill_prior_warmstart: 0

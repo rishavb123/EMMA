@@ -134,6 +134,7 @@ class EMMATrainerCallback(BaseCallback):
         self.poi_field_model.reset()
         self.poi_emb_learner.reset()
         self.model_trainer.set_agent(self.model)
+        self.poi_emb_learner.set_agent(self.model)
 
     def _on_training_end(self) -> None:
         return super()._on_training_end()

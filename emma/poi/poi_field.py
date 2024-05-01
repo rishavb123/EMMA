@@ -19,11 +19,30 @@ class POIFieldModel(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def calculate_poi_values(
+    def _calculate_poi_values(
         self,
-        model_inp: torch.Tensor,
+        model_inp: (
+            torch.Tensor | Tuple[torch.Tensor, torch.Tensor] | Dict[str, torch.Tensor]
+        ),
     ) -> np.ndarray:
         pass
+
+    def calculate_poi_values(
+        self,
+        model_inp: (
+            torch.Tensor | Tuple[torch.Tensor, torch.Tensor] | Dict[str, torch.Tensor]
+        ),
+    ) -> np.ndarray:
+        if self.external_model_trainer.model is None:
+            if type(model_inp) == dict:
+                size = model_inp["state"].shape[0]
+            elif type(model_inp) == tuple:
+                size = model_inp[0].shape[0]
+            else:
+                size = model_inp.shape[0]
+            return np.zeros(size)
+        else:
+            return self._calculate_poi_values(model_inp=model_inp)
 
 
 class ZeroPOIField(POIFieldModel):
@@ -31,9 +50,11 @@ class ZeroPOIField(POIFieldModel):
     def __init__(self, external_model_trainer: ExternalModelTrainer) -> None:
         super().__init__(external_model_trainer)
 
-    def calculate_poi_values(
+    def _calculate_poi_values(
         self,
-        model_inp: torch.Tensor,
+        model_inp: (
+            torch.Tensor | Tuple[torch.Tensor, torch.Tensor] | Dict[str, torch.Tensor]
+        ),
     ) -> np.ndarray:
         return np.zeros(model_inp.shape[0])
 
@@ -46,9 +67,11 @@ class DisagreementPOIField(POIFieldModel):
         super().__init__(external_model_trainer)
         self.num_samples = num_samples
 
-    def calculate_poi_values(
+    def _calculate_poi_values(
         self,
-        model_inp: torch.Tensor,
+        model_inp: (
+            torch.Tensor | Tuple[torch.Tensor, torch.Tensor] | Dict[str, torch.Tensor]
+        ),
     ) -> np.ndarray:
         with torch.no_grad():
             uncertainty: torch.Tensor = (
@@ -62,9 +85,11 @@ class ModelGradientPOIField(POIFieldModel):
     def __init__(self, external_model_trainer: ExternalModelTrainer) -> None:
         super().__init__(external_model_trainer)
 
-    def calculate_poi_values(
+    def _calculate_poi_values(
         self,
-        model_inp: torch.Tensor | Tuple[torch.Tensor, torch.Tensor],
+        model_inp: (
+            torch.Tensor | Tuple[torch.Tensor, torch.Tensor] | Dict[str, torch.Tensor]
+        ),
     ) -> np.ndarray:
         self.external_model_trainer.model.train(mode=False)
         model_out = self.external_model_trainer.predict(model_inp)

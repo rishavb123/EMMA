@@ -1,0 +1,6 @@
+experiment_name: key_prediction_door_key_change
+model_cls: emma.poi.poi_exploration.POIAgnosticPPO
+defaults:
+    - policy_model
+    - poi_model/zero
+    - _self_

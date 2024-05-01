@@ -144,6 +144,53 @@ class MCActorCriticPolicy(ActorCriticPolicy):
         )
 
 
+class MCMultiInputActorCriticPolicy(MCActorCriticPolicy):
+
+    def __init__(
+        self,
+        observation_space: gym.spaces.Dict,
+        action_space: gym.spaces.Space,
+        lr_schedule: Callable[[float], float],
+        net_arch: List[int] | Dict[str, List[int]] | None = None,
+        activation_fn: Type[nn.Module] = nn.Tanh,
+        ortho_init: bool = True,
+        use_sde: bool = False,
+        log_std_init: float = 0.0,
+        full_std: bool = True,
+        use_expln: bool = False,
+        squash_output: bool = False,
+        features_extractor_class: Type[BaseFeaturesExtractor] = CombinedExtractor,
+        features_extractor_kwargs: Dict[str, Any] | None = None,
+        share_features_extractor: bool = True,
+        normalize_images: bool = True,
+        optimizer_class: Type[torch.optim.Optimizer] = torch.optim.Adam,
+        optimizer_kwargs: Dict[str, Any] | None = None,
+        mlp_extractor_dropout_p: float = 0.5,
+        mlp_extractor_num_samples: int = 30,
+    ):
+        super().__init__(
+            observation_space,
+            action_space,
+            lr_schedule,
+            net_arch,
+            activation_fn,
+            ortho_init,
+            use_sde,
+            log_std_init,
+            full_std,
+            use_expln,
+            squash_output,
+            features_extractor_class,
+            features_extractor_kwargs,
+            share_features_extractor,
+            normalize_images,
+            optimizer_class,
+            optimizer_kwargs,
+            mlp_extractor_dropout_p,
+            mlp_extractor_num_samples,
+        )
+
+
 class PolicyNetworkFromAgent(nn.Module):
 
     def __init__(self, agent: PPO, *args, **kwargs) -> None:
@@ -176,6 +223,7 @@ class ExternalModelTrainer(abc.ABC):
         epochs_per_rollout: int = 1,
         dtype=torch.float32,
         action_to_model: bool = False,
+        keep_conditions: bool = False,
     ) -> None:
         self.device = device
         self.dtype = dtype
@@ -187,6 +235,7 @@ class ExternalModelTrainer(abc.ABC):
         self.batch_size = batch_size
         self.epochs_per_rollout = epochs_per_rollout
         self.action_to_model = action_to_model
+        self.keep_conditions = keep_conditions
 
     def reset(self) -> None:
         if self.model is not None:
@@ -213,9 +262,9 @@ class ExternalModelTrainer(abc.ABC):
     def predict(self, states, actions=None):
         if self.action_to_model:
             assert actions is not None, "Actions cannot be none"
-            return self.model(states)
-        else:
             return self.model((states, actions))
+        else:
+            return self.model(states)
 
     def process_observations(self, observations: torch.Tensor) -> torch.Tensor:
         # Converts observations from shape (batch_size, n_envs, ...) to (batch_size * n_envs, ...)
@@ -242,9 +291,7 @@ class ExternalModelTrainer(abc.ABC):
                 rollout_buffer.to_torch(observations)
             ), self.process_actions(rollout_buffer.to_torch(actions))
         else:
-            return self.process_observations(
-                rollout_buffer.to_torch(observations)
-            ), self.process_actions(rollout_buffer.to_torch(actions))
+            return self.process_observations(rollout_buffer.to_torch(observations))
 
     @abc.abstractmethod
     def rollout_to_model_output(
@@ -330,6 +377,7 @@ class PolicyTrainer(ExternalModelTrainer):
             -1,
             -1,
             dtype,
+            keep_conditions=True,
         )
 
     def set_agent(self, agent: PPO) -> None:
