@@ -147,6 +147,9 @@ class SamplingPOILearner(POIEmbLearner):
                 else:
                     inp = samples
 
+                if self.poi_model.external_model_trainer.action_to_model:
+                    raise NotImplementedError("Need to implemenent the ability to pass the actions to the model!")
+
                 poi_data = torch.tensor(
                     self.poi_model.calculate_poi_values(inp),
                     device=self.device,
@@ -251,6 +254,9 @@ class SamplingPOILearner(POIEmbLearner):
                     }
                 else:
                     eval_inp = eval_obs.reshape(batch_size * eval_set_size, *obs_shape)
+
+                if self.poi_model.external_model_trainer.action_to_model:
+                    raise NotImplementedError("Need to implemenent the ability to pass the actions to the model!")
 
                 poi_data = torch.tensor(
                     self.poi_model.calculate_poi_values(inp).reshape(
@@ -357,6 +363,9 @@ class POISkillManager(POIEmbLearner):
                 inp = {"state": samples, "poi_emb": skills}
             else:
                 inp = samples
+
+            if self.poi_model.external_model_trainer.action_to_model:
+                raise NotImplementedError("Need to implemenent the ability to pass the actions to the model!")
 
             pois = torch.tensor(
                 self.poi_model.calculate_poi_values(inp),

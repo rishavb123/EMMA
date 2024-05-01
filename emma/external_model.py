@@ -440,3 +440,49 @@ class PolicyTrainer(ExternalModelTrainer):
         # Policy is handled by stable baselines
         # Further, better eval is the mean rewards that are already logged
         return np.array(0)
+
+
+class ForwardModelTrainer(ExternalModelTrainer):
+
+    def __init__(
+        self,
+        model: nn.Module | None,
+        device: str,
+        batch_size: int = 128,
+        epochs_per_rollout: int = 1,
+        dtype=torch.float32,
+    ) -> None:
+        super().__init__(
+            model=model,
+            device=device,
+            loss_type=torch.nn.MSELoss,
+            optimizer_cls="torch.optim.Adam",
+            optimizer_kwargs=None,
+            batch_size=batch_size,
+            epochs_per_rollout=epochs_per_rollout,
+            dtype=dtype,
+            action_to_model=True,
+            keep_conditions=False,
+        )
+
+    def rollout_to_model_input(
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
+    ) -> torch.Tensor | Tuple[torch.Tensor]:
+        obs, actions = super().rollout_to_model_input(env, rollout_buffer, info_buffer)
+        return obs[:-1], actions[:-1]
+
+    def rollout_to_model_output(
+        self,
+        env: VecEnv,
+        rollout_buffer: RolloutBuffer,
+        info_buffer: Dict[str, np.ndarray],
+    ) -> torch.Tensor:
+        observations = (
+            rollout_buffer.observations["state"]
+            if isinstance(rollout_buffer.observations, dict)
+            else rollout_buffer.observations
+        )
+        return observations[1:]
