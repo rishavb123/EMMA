@@ -148,7 +148,9 @@ class SamplingPOILearner(POIEmbLearner):
                     inp = samples
 
                 if self.poi_model.external_model_trainer.action_to_model:
-                    raise NotImplementedError("Need to implemenent the ability to pass the actions to the model!")
+                    raise NotImplementedError(
+                        "Need to implemenent the ability to pass the actions to the model!"
+                    )
 
                 poi_data = torch.tensor(
                     self.poi_model.calculate_poi_values(inp),
@@ -256,7 +258,9 @@ class SamplingPOILearner(POIEmbLearner):
                     eval_inp = eval_obs.reshape(batch_size * eval_set_size, *obs_shape)
 
                 if self.poi_model.external_model_trainer.action_to_model:
-                    raise NotImplementedError("Need to implemenent the ability to pass the actions to the model!")
+                    raise NotImplementedError(
+                        "Need to implemenent the ability to pass the actions to the model!"
+                    )
 
                 poi_data = torch.tensor(
                     self.poi_model.calculate_poi_values(inp).reshape(
@@ -326,11 +330,13 @@ class POISkillManager(POIEmbLearner):
         n_samples: int,
         poi_emb_size: int,
         uniform_skill_prior_warmstart: int = 0,
+        uniform_skill_prior_weight: float = 0.0,
     ) -> None:
         super().__init__(poi_emb_size)
         self.state_sampler = state_sampler
         self.n_samples = n_samples
         self.uniform_skill_prior_warmstart = uniform_skill_prior_warmstart
+        self.uniform_skill_prior_weight = uniform_skill_prior_weight
         self.discriminator = None
 
     def reset(self) -> None:
@@ -365,7 +371,9 @@ class POISkillManager(POIEmbLearner):
                 inp = samples
 
             if self.poi_model.external_model_trainer.action_to_model:
-                raise NotImplementedError("Need to implemenent the ability to pass the actions to the model!")
+                raise NotImplementedError(
+                    "Need to implemenent the ability to pass the actions to the model!"
+                )
 
             pois = torch.tensor(
                 self.poi_model.calculate_poi_values(inp),
@@ -380,6 +388,10 @@ class POISkillManager(POIEmbLearner):
                 torch.sum(skills * pois.unsqueeze(dim=1), dim=0) / counts
             )  # (skill_size, )
             skill_probs = F.softmax(average_poi_per_skill, dim=0)  # (skill_size, )
+            skill_probs = (
+                skill_probs * (1 - self.uniform_prior_weight)
+                + self.uniform_skill_prior_weight / self.poi_emb_size
+            )
 
             skill_idx = torch.multinomial(input=skill_probs, num_samples=1)
             sampled_skill = torch.zeros_like(skill_probs)
