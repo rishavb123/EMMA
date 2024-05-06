@@ -389,7 +389,7 @@ class POISkillManager(POIEmbLearner):
             )  # (skill_size, )
             skill_probs = F.softmax(average_poi_per_skill, dim=0)  # (skill_size, )
             skill_probs = (
-                skill_probs * (1 - self.uniform_prior_weight)
+                skill_probs * (1 - self.uniform_skill_prior_weight)
                 + self.uniform_skill_prior_weight / self.poi_emb_size
             )
 
