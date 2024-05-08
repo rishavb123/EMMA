@@ -23,4 +23,3 @@ defaults:
     - poi_model/disagreement
     - poi_emb_learner/skill_manager
     - _self_
-    - dev
