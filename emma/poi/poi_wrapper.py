@@ -16,6 +16,7 @@ class EMMAWrapper(gym.ObservationWrapper):
         poi_emb_learner: POIEmbLearner,
         n_envs: int,
         per_step_poi_emb: bool = False,
+        include_task_reward: bool = True,
     ):
         super().__init__(env)
         self.poi_model = poi_model
@@ -23,6 +24,7 @@ class EMMAWrapper(gym.ObservationWrapper):
         self.poi_emb_learner.set_poi_model(self.poi_model)
         self.use_poi_emb = self.poi_emb_learner.poi_emb_size > 0
         self.per_step_poi_emb = per_step_poi_emb
+        self.include_task_reward = include_task_reward
 
         self.state_space = self.observation_space
         self.current_poi_emb = None
@@ -46,7 +48,10 @@ class EMMAWrapper(gym.ObservationWrapper):
 
     def step(self, action: Any) -> tuple[Any, float, bool, bool, dict[str, Any]]:
         self.cur_single_env_step += 1
-        return super().step(action)
+        obs, reward, terminated, truncated, info = super().step(action)
+        if not self.include_task_reward:
+            reward = reward * 0
+        return obs, reward, terminated, truncated, info
 
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
