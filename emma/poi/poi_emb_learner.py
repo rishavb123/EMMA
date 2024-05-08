@@ -2,6 +2,7 @@ from typing import Any, Dict, Tuple
 import abc
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import hydra
 
@@ -25,8 +26,19 @@ class POIEmbLearner(abc.ABC):
         self.poi_model = poi_model
 
     def set_agent(self, agent: POIPPO):
-        # self.agent = agent
-        pass
+        self.agent_policy = agent.policy
+
+    def calculate_policy_actions(self, obs: torch.Tensor):
+        features = self.agent_policy.extract_features(obs)
+        if self.agent_policy.share_features_extractor:
+            pi_features = features
+        else:
+            pi_features, _vf_features = features
+        latent_pi = self.agent_policy.mlp_extractor.policy_net(pi_features)
+        distribution = self.agent_policy._get_action_dist_from_latent(latent_pi)
+        actions = distribution.get_actions(deterministic=True)
+        actions = actions.reshape((-1, *self.agent_policy.action_space.shape))  # type: ignore[misc]
+        return actions
 
     def set_device(self, device: str | None) -> None:
         self.device = device
@@ -130,9 +142,15 @@ class SamplingPOILearner(POIEmbLearner):
         self.frozen_poi_pred_model = self.frozen_poi_pred_model.to(device)
         self.emb = self.emb.to(self.device)
 
+    def set_agent(self, agent: POIPPO):
+        return super().set_agent(agent)
+
     def generate_poi_emb(self, cur_obs: Any, timestep: int) -> np.ndarray:
         if self.poi_emb_size == 0:
             return np.array([])
+
+        if not hasattr(self, "agent_policy"):
+            return np.zeros(self.poi_emb_size)
 
         old_emb = self.emb.detach().clone().repeat(self.num_poi_samples, 1)
 
@@ -144,13 +162,16 @@ class SamplingPOILearner(POIEmbLearner):
 
                 if self.poi_model.external_model_trainer.keep_conditions:
                     inp = {"state": samples, "poi_emb": old_emb}
+                elif self.poi_model.external_model_trainer.action_to_model:
+                    inp = {"state": samples, "poi_emb": old_emb}
+                    actions = self.calculate_policy_actions(inp)
+                    actions = F.one_hot(
+                        actions,
+                        num_classes=self.poi_model.external_model_trainer.n_actions,
+                    )
+                    inp = (inp["state"], actions)
                 else:
                     inp = samples
-
-                if self.poi_model.external_model_trainer.action_to_model:
-                    raise NotImplementedError(
-                        "Need to implemenent the ability to pass the actions to the model!"
-                    )
 
                 poi_data = torch.tensor(
                     self.poi_model.calculate_poi_values(inp),
@@ -177,6 +198,9 @@ class SamplingPOILearner(POIEmbLearner):
         if self.poi_emb_size == 0:
             return {}
 
+        if not hasattr(self, "agent_policy"):
+            return {}
+
         if isinstance(inp, dict):
             inp = inp["state"]
 
@@ -184,18 +208,29 @@ class SamplingPOILearner(POIEmbLearner):
 
         # inp: (batch_size, *obs_shape)
 
-        inp = inp[
-            torch.randperm(inp.shape[0])[
-                : int(inp.shape[0] * self.poi_learner_obs_subset)
+        if type(inp) == tuple:
+            idx = torch.randperm(inp[0].shape[0])[
+                : int(inp[0].shape[0] * self.poi_learner_obs_subset)
             ]
-        ]
+            inp = tuple(sub_inp[idx] for sub_inp in inp)
+        else:
+            inp = inp[
+                torch.randperm(inp.shape[0])[
+                    : int(inp.shape[0] * self.poi_learner_obs_subset)
+                ]
+            ]
+
+        n_steps = inp[0].shape[0] if type(inp) == tuple else inp.shape[0]
 
         samples = []
         eval_samples = []
 
         for _ in range(self.poi_learner_epochs):
-            for i in range(inp.shape[0]):
-                obs = inp[i]
+            for i in range(n_steps):
+                if type(inp) == tuple:
+                    obs = tuple(sub_inp[i] for sub_inp in inp)
+                else:
+                    obs = inp[i]
                 samples.append(
                     self.state_sampler.sample(
                         cur_obs=obs, batch_size=self.num_poi_samples
@@ -213,7 +248,8 @@ class SamplingPOILearner(POIEmbLearner):
             device=self.device
         )  # (n_examples, eval_set_size, *obs_shape)
 
-        n_examples = self.poi_learner_epochs * inp.shape[0]
+
+        n_examples = self.poi_learner_epochs * n_steps
         indices = torch.randperm(n_examples)
 
         eff_batch_size = min(n_examples, self.poi_learner_batch_size)
@@ -245,6 +281,17 @@ class SamplingPOILearner(POIEmbLearner):
                         "state": obs.reshape(batch_size * set_size, *obs_shape),
                         "poi_emb": old_emb,
                     }
+                elif self.poi_model.external_model_trainer.action_to_model:
+                    inp = {
+                        "state": obs.reshape(batch_size * set_size, *obs_shape),
+                        "poi_emb": old_emb,
+                    }
+                    actions = self.calculate_policy_actions(inp)
+                    actions = F.one_hot(
+                        actions,
+                        num_classes=self.poi_model.external_model_trainer.n_actions,
+                    )
+                    inp = (inp["state"], actions)
                 else:
                     inp = obs.reshape(batch_size * set_size, *obs_shape)
                 if self.poi_model.external_model_trainer.keep_conditions:
@@ -254,13 +301,21 @@ class SamplingPOILearner(POIEmbLearner):
                         ),
                         "poi_emb": old_emb_eval,
                     }
+                elif self.poi_model.external_model_trainer.action_to_model:
+                    eval_inp = {
+                        "state": eval_obs.reshape(
+                            batch_size * eval_set_size, *obs_shape
+                        ),
+                        "poi_emb": old_emb_eval,
+                    }
+                    actions = self.calculate_policy_actions(eval_inp)
+                    actions = F.one_hot(
+                        actions,
+                        num_classes=self.poi_model.external_model_trainer.n_actions,
+                    )
+                    eval_inp = (eval_inp["state"], actions)
                 else:
                     eval_inp = eval_obs.reshape(batch_size * eval_set_size, *obs_shape)
-
-                if self.poi_model.external_model_trainer.action_to_model:
-                    raise NotImplementedError(
-                        "Need to implemenent the ability to pass the actions to the model!"
-                    )
 
                 poi_data = torch.tensor(
                     self.poi_model.calculate_poi_values(inp).reshape(
@@ -344,6 +399,7 @@ class POISkillManager(POIEmbLearner):
         self.state_sampler.reset()
 
     def set_agent(self, agent: POISkillSamplingDiaynPPO):
+        super().set_agent(agent=agent)
         self.discriminator = agent.discriminator
 
     def set_device(self, device: str | None) -> None:
@@ -367,13 +423,15 @@ class POISkillManager(POIEmbLearner):
 
             if self.poi_model.external_model_trainer.keep_conditions:
                 inp = {"state": samples, "poi_emb": skills}
+            elif self.poi_model.external_model_trainer.action_to_model:
+                inp = {"state": samples, "poi_emb": skills}
+                actions = self.calculate_policy_actions(inp)
+                actions = F.one_hot(
+                    actions, num_classes=self.poi_model.external_model_trainer.n_actions
+                )
+                inp = (inp["state"], actions)
             else:
                 inp = samples
-
-            if self.poi_model.external_model_trainer.action_to_model:
-                raise NotImplementedError(
-                    "Need to implemenent the ability to pass the actions to the model!"
-                )
 
             pois = torch.tensor(
                 self.poi_model.calculate_poi_values(inp),

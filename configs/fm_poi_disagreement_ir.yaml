@@ -1,0 +1,10 @@
+experiment_name: disagreement_ir_forward_model_door_key_change
+model_cls: emma.poi.poi_exploration.POIInstrinsicRewardPPO
+model_kwargs:
+    beta: 10
+defaults:
+    - door_key_change
+    - model_trainer/forward_model
+    - poi_model/disagreement
+    - _self_
+    - dev

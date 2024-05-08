@@ -56,7 +56,13 @@ class ZeroPOIField(POIFieldModel):
             torch.Tensor | Tuple[torch.Tensor, torch.Tensor] | Dict[str, torch.Tensor]
         ),
     ) -> np.ndarray:
-        return np.zeros(model_inp.shape[0])
+        if type(model_inp) == tuple:
+            n_examples = model_inp[0].shape[0]
+        elif type(model_inp) == dict:
+            n_examples = model_inp["state"].shape[0]
+        else:
+            n_examples = model_inp.shape[0]
+        return np.zeros(n_examples)
 
 
 class DisagreementPOIField(POIFieldModel):

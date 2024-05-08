@@ -156,7 +156,7 @@ class EMMATrainerCallback(BaseCallback):
         )
         out = self.model_trainer.rollout_to_model_output(
             env=env, rollout_buffer=rollout_buffer, info_buffer=info_buffer
-        ).to(device=self.model_trainer.device, dtype=self.model_trainer.dtype)
+        )
 
         av_loss = self.model_trainer.receive_rollout(
             inp=inp,
@@ -211,13 +211,13 @@ class EMMATrainerCallback(BaseCallback):
                 env=env,
                 rollout_buffer=self.random_eval_model.rollout_buffer,
                 info_buffer=info_buffer,
-            ).to(device=self.model_trainer.device, dtype=self.model_trainer.dtype)
+            )
             eval_out = self.model_trainer.rollout_to_model_output(
                 env=env,
                 rollout_buffer=self.random_eval_model.rollout_buffer,
                 info_buffer=self.random_eval_model.info_buffer,
-            ).to(device=self.model_trainer.device, dtype=self.model_trainer.dtype)
-
+            )
+            
             eval_av_loss = self.model_trainer.calc_loss(
                 inp=eval_inp,
                 out=eval_out,

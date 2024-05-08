@@ -4,6 +4,7 @@ import abc
 import gymnasium as gym
 import torch
 from torch import nn
+import torch.nn.functional as F
 import logging
 import numpy as np
 import hydra
@@ -224,6 +225,7 @@ class ExternalModelTrainer(abc.ABC):
         dtype=torch.float32,
         action_to_model: bool = False,
         keep_conditions: bool = False,
+        n_actions: int | None = None,
     ) -> None:
         self.device = device
         self.dtype = dtype
@@ -236,6 +238,8 @@ class ExternalModelTrainer(abc.ABC):
         self.epochs_per_rollout = epochs_per_rollout
         self.action_to_model = action_to_model
         self.keep_conditions = keep_conditions
+        self.n_actions = n_actions
+        assert not self.action_to_model or self.n_actions is not None
 
     def reset(self) -> None:
         if self.model is not None:
@@ -272,7 +276,13 @@ class ExternalModelTrainer(abc.ABC):
 
     def process_actions(self, actions: torch.Tensor) -> torch.Tensor:
         # Converts observations from shape (batch_size, n_envs, ...) to (batch_size * n_envs, ...)
-        return actions.flatten(end_dim=1)
+        actions = actions.flatten(end_dim=1)
+        actions = (
+            F.one_hot(actions.to(dtype=torch.int64), num_classes=self.n_actions)
+            .squeeze(dim=1)
+            .to(dtype=self.dtype)
+        )
+        return actions
 
     def rollout_to_model_input(
         self,
@@ -314,7 +324,11 @@ class ExternalModelTrainer(abc.ABC):
 
         self.model.train(mode=True)
 
-        n_examples = inp.shape[0]
+        if self.action_to_model:
+            n_examples = inp[0].shape[0]
+        else:
+            n_examples = inp.shape[0]
+
         eff_batch_size = min(n_examples, self.batch_size)
         if eff_batch_size == -1:
             eff_batch_size = n_examples
@@ -448,6 +462,7 @@ class ForwardModelTrainer(ExternalModelTrainer):
         self,
         model: nn.Module | None,
         device: str,
+        n_actions: int = 7,
         batch_size: int = 128,
         epochs_per_rollout: int = 1,
         dtype=torch.float32,
@@ -463,16 +478,8 @@ class ForwardModelTrainer(ExternalModelTrainer):
             dtype=dtype,
             action_to_model=True,
             keep_conditions=False,
+            n_actions=n_actions,
         )
-
-    def rollout_to_model_input(
-        self,
-        env: VecEnv,
-        rollout_buffer: RolloutBuffer,
-        info_buffer: Dict[str, np.ndarray],
-    ) -> torch.Tensor | Tuple[torch.Tensor]:
-        obs, actions = super().rollout_to_model_input(env, rollout_buffer, info_buffer)
-        return obs[:-1], actions[:-1]
 
     def rollout_to_model_output(
         self,
@@ -485,4 +492,6 @@ class ForwardModelTrainer(ExternalModelTrainer):
             if isinstance(rollout_buffer.observations, dict)
             else rollout_buffer.observations
         )
-        return observations[1:]
+        shifted_observations = rollout_buffer.to_torch(observations)
+        shifted_observations[:-1] = shifted_observations[1:].detach().clone()
+        return self.process_observations(shifted_observations)

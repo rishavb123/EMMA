@@ -89,6 +89,8 @@ class VAESampler(StateSampler):
         self.vae.train(mode=True)
         if type(inp) == dict:
             inp = inp["state"]
+        elif type(inp) == tuple:
+            inp = inp[0]
         n_examples = inp.shape[0]
         eff_batch_size = min(n_examples, self.vae_train_batch_size)
         if eff_batch_size == -1:
