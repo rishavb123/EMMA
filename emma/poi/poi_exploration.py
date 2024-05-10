@@ -24,11 +24,13 @@ class POIPPO(PPO, abc.ABC):
         *args,
         poi_model: POIFieldModel | None = None,
         infos_to_save: Dict[str, Tuple] | None = None,
+        reward_warmstart: int = -1,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.poi_model = poi_model
         self.infos_to_save = [] if infos_to_save is None else infos_to_save
+        self.reward_warmstart = reward_warmstart
         self._reset_info_buffer()
 
     def _reset_info_buffer(self):
@@ -48,7 +50,15 @@ class POIPPO(PPO, abc.ABC):
         n_rollout_steps: int,
     ) -> bool:
         self._reset_info_buffer()
-        return super().collect_rollouts(env, callback, rollout_buffer, n_rollout_steps)
+        result = super().collect_rollouts(
+            env, callback, rollout_buffer, n_rollout_steps
+        )
+        if result:
+            if self.num_timesteps < self.reward_warmstart:
+                self.rollout_buffer.rewards *= 0
+            return True
+        else:
+            return False
 
     def _update_info_buffer(
         self, infos: List[Dict[str, Any]], dones: np.ndarray | None = None
@@ -121,6 +131,8 @@ class POISkillSamplingDiaynPPO(POIPPO):
         poi_model: POIFieldModel | None = None,
         discriminator: nn.Module | None = None,
         infos_to_save: Dict[str, Tuple] | None = None,
+        reward_warmstart: int = -1,
+        include_skill_reward_during_warmstart: bool = True,
         beta: float = 1.0,
         discriminator_optimizer_cls: str = "torch.optim.Adam",
         discriminator_optimizer_kwargs: Dict[str, Any] | None = None,
@@ -128,9 +140,16 @@ class POISkillSamplingDiaynPPO(POIPPO):
         **kwargs,
     ):
         super().__init__(
-            *args, poi_model=poi_model, infos_to_save=infos_to_save, **kwargs
+            *args,
+            poi_model=poi_model,
+            reward_warmstart=reward_warmstart,
+            infos_to_save=infos_to_save,
+            **kwargs,
         )
         self.beta = beta
+        self.include_skill_reward_during_warmstart = (
+            include_skill_reward_during_warmstart
+        )
 
         self.cross_entropy_loss = nn.CrossEntropyLoss()
 
@@ -174,7 +193,14 @@ class POISkillSamplingDiaynPPO(POIPPO):
             env, callback, rollout_buffer, n_rollout_steps
         )
         if result:
-            if self.poi_model is not None and self.discriminator is not None:
+            if (
+                self.poi_model is not None
+                and self.discriminator is not None
+                and (
+                    self.include_skill_reward_during_warmstart
+                    or self.num_timesteps >= self.reward_warmstart
+                )
+            ):
                 # Calculate Instrinsic Rewards
                 observations = torch.tensor(
                     rollout_buffer.observations["state"],
