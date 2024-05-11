@@ -217,7 +217,6 @@ class EMMATrainerCallback(BaseCallback):
                 rollout_buffer=self.random_eval_model.rollout_buffer,
                 info_buffer=self.random_eval_model.info_buffer,
             )
-            
             eval_av_loss = self.model_trainer.calc_loss(
                 inp=eval_inp,
                 out=eval_out,
@@ -269,6 +268,7 @@ class EMMAAnalysis(BaseAnalysis):
                     .ewm(span=30)
                     .mean()
                 )
+                rewards = run_df["rollout/ep_rew_mean"].ewm(span=30).mean()
                 reverse_cum_min_objective = objective[::-1].cummin()[::-1]
                 max_objective = objective.max()
 
@@ -284,19 +284,23 @@ class EMMAAnalysis(BaseAnalysis):
                     max_objective - reverse_cum_min_objective
                 ) < 0.02
 
-                results_idx.append((experiment_id, run_id))
-                for i in range(len(idx_transfers) - 1):
-                    cur_idx = idx_transfers[i]
-                    next_idx = idx_transfers[i + 1]
-                    first_true = converged_signal[cur_idx:next_idx].idxmax()
-                    converged_signal[first_true:next_idx] = True
-                    results_values[f"convergence_efficiency_{i}"].append(
-                        run_df.loc[first_true, "global_step"]
-                        - run_df.loc[cur_idx, "global_step"]
-                    )
-                    results_values[f"asymptotic_performance_{i}"].append(
-                        objective[cur_idx:next_idx].min()
-                    )
+                if all(
+                    rewards[idx_transfers[i] : idx_transfers[i + 1]].max() > 0.9
+                    for i in range(len(idx_transfers) - 1)
+                ):
+                    results_idx.append((experiment_id, run_id))
+                    for i in range(len(idx_transfers) - 1):
+                        cur_idx = idx_transfers[i]
+                        next_idx = idx_transfers[i + 1]
+                        first_true = converged_signal[cur_idx:next_idx].idxmax()
+                        converged_signal[first_true:next_idx] = True
+                        results_values[f"convergence_efficiency_{i}"].append(
+                            run_df.loc[first_true, "global_step"]
+                            - run_df.loc[cur_idx, "global_step"]
+                        )
+                        results_values[f"asymptotic_performance_{i}"].append(
+                            objective[cur_idx:next_idx].min()
+                        )
 
                 # run_df["converged_signal"] = converged_signal
 
@@ -312,7 +316,7 @@ class EMMAAnalysis(BaseAnalysis):
                 (series.quantile(q) <= series) & (series <= series.quantile(1 - q))
             ].std()
 
-        aggregators = ["mean", "std", iqm, iqstd]
+        aggregators = ["mean", "std", iqm, iqstd, len]
         results_df = (
             pd.DataFrame(
                 results_values,
