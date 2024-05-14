@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 
 # Sample JSON data (replace with your actual file data)
 filename = (
-    "/Users/rbhagat/projects/EMMA/plotting/outputs/2024-05-11/14-06-30/results.json"
+    "/Users/rbhagat/projects/EMMA/plotting/outputs/kp_orig/1//results.json"
 )
 
-metric_name_to_plot = "convergence_efficiency_1"
+# metric_name_to_plot = "train_convergence_efficiency_1"
+metric_name_to_plot = "train_asymptotic_performance_1"
 
 run_id_mapping = {
     "disagreement_diayn_key_prediction_door_key_change_10_1715020025": "10 Skill POI Diayn",
@@ -51,5 +52,7 @@ plt.title(f"{aggregator.title()} {metric_name_to_plot.replace('_', ' ').title()}
 plt.xlabel("Run ID")
 plt.ylabel(f"{aggregator.title()} {metric_name_to_plot.replace('_', ' ').title()}")
 plt.show()  # To display the plot, uncomment this line
+
+plt.close()
 
 print(df)  # Print the DataFrame containing the means for valid runs

@@ -8,7 +8,7 @@ analysis:
         #       - emma.poi.poi_wrapper.EMMAWrapper
         - config.model_trainer._target_: emma.envs.color_door_key.CorrectKeyDistancePredictor
         - config.emma_wrapper_kwargs.include_task_reward: null
-        - config.model_trainer.epochs_per_rollout: null
+        - config.model_trainer.epochs_per_rollout: 4
     load_from_output_dir: true
 device: mps
 defaults:

@@ -7,6 +7,9 @@ import logging
 import pandas as pd
 import wandb
 import json
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pickle as pkl
 
 from stable_baselines3.common.callbacks import BaseCallback
 
@@ -250,27 +253,31 @@ class EMMAAnalysis(BaseAnalysis):
     def analyze(self, df: pd.DataFrame, configs: Dict[str, Dict[str, Any]]) -> Any:
 
         results_idx = []
-        results_values = {
-            f"convergence_efficiency_{env_idx}": []
-            for env_idx in range(1 + len(self.cfg.transfer_steps))
-        } | {
-            f"asymptotic_performance_{env_idx}": []
-            for env_idx in range(1 + len(self.cfg.transfer_steps))
-        }
+        results_values = (
+            {
+                f"train_convergence_efficiency_{env_idx}": []
+                for env_idx in range(1 + len(self.cfg.transfer_steps))
+            }
+            | {
+                f"train_asymptotic_performance_{env_idx}": []
+                for env_idx in range(1 + len(self.cfg.transfer_steps))
+            }
+            | {
+                f"eval_convergence_efficiency_{env_idx}": []
+                for env_idx in range(1 + len(self.cfg.transfer_steps))
+            }
+            | {
+                f"eval_asymptotic_performance_{env_idx}": []
+                for env_idx in range(1 + len(self.cfg.transfer_steps))
+            }
+        )
 
         for experiment_id in df.index.get_level_values(0).unique():
             run_config = configs[experiment_id]
             for run_id in df.loc[experiment_id].index.get_level_values(0).unique():
                 run_df = df.loc[experiment_id, run_id]
 
-                objective = (
-                    run_df["external_model_train/av_external_model_loss"]
-                    .ewm(span=30)
-                    .mean()
-                )
                 rewards = run_df["rollout/ep_rew_mean"].ewm(span=30).mean()
-                reverse_cum_min_objective = objective[::-1].cummin()[::-1]
-                max_objective = objective.max()
 
                 transfer_steps = run_config["transfer_steps"]
                 idx_transfers = [
@@ -280,25 +287,38 @@ class EMMAAnalysis(BaseAnalysis):
                 idx_transfers.insert(0, 0)
                 idx_transfers.append(run_df.shape[0])
 
-                converged_signal = (objective - reverse_cum_min_objective) / (
-                    max_objective - reverse_cum_min_objective
-                ) < 0.02
-
-                if all(
+                if not all(
                     rewards[idx_transfers[i] : idx_transfers[i + 1]].max() > 0.9
                     for i in range(len(idx_transfers) - 1)
                 ):
-                    results_idx.append((experiment_id, run_id))
+                    continue
+
+                results_idx.append((experiment_id, run_id))
+
+                for prefix in ["train", "eval"]:
+
+                    objective = (
+                        run_df[f"external_model_{prefix}/av_external_model_loss"]
+                        .ewm(span=30)
+                        .mean()
+                    )
+                    reverse_cum_min_objective = objective[::-1].cummin()[::-1]
+                    max_objective = objective.max()
+
+                    converged_signal = (objective - reverse_cum_min_objective) / (
+                        max_objective - reverse_cum_min_objective
+                    ) < 0.02
+
                     for i in range(len(idx_transfers) - 1):
                         cur_idx = idx_transfers[i]
                         next_idx = idx_transfers[i + 1]
                         first_true = converged_signal[cur_idx:next_idx].idxmax()
                         converged_signal[first_true:next_idx] = True
-                        results_values[f"convergence_efficiency_{i}"].append(
+                        results_values[f"{prefix}_convergence_efficiency_{i}"].append(
                             run_df.loc[first_true, "global_step"]
                             - run_df.loc[cur_idx, "global_step"]
                         )
-                        results_values[f"asymptotic_performance_{i}"].append(
+                        results_values[f"{prefix}_asymptotic_performance_{i}"].append(
                             objective[cur_idx:next_idx].min()
                         )
 
@@ -331,6 +351,24 @@ class EMMAAnalysis(BaseAnalysis):
         results_df.to_json(f"{self.output_directory}/results.json", indent=4)
 
         logger.info(f"\n{results_df}")
+
+        average_over_experiments = df.groupby(["experiment_id", "global_step"]).agg(iqm)
+
+        plot_dfs = {}
+
+        for plot_col in [
+            "external_model_train/av_external_model_loss",
+            "external_model_eval/av_external_model_loss",
+            "rollout/ep_rew_mean",
+        ]:
+            plot_df = average_over_experiments.pivot_table(
+                values=plot_col, index="global_step", columns="experiment_id"
+            )
+
+            plot_dfs[plot_col] = plot_df
+
+        with open(f"{self.output_directory}/plot_results.pkl", "wb") as f:
+            pkl.dump(plot_dfs, f)
 
         return f"Saved Results to {self.output_directory}/results.json"
 
