@@ -288,7 +288,7 @@ class EMMAAnalysis(BaseAnalysis):
                 idx_transfers.append(run_df.shape[0])
 
                 if not all(
-                    rewards[idx_transfers[i] : idx_transfers[i + 1]].max() > 0.9
+                    rewards[idx_transfers[i] : idx_transfers[i + 1]].max() > 0.8
                     for i in range(len(idx_transfers) - 1)
                 ):
                     continue
@@ -302,12 +302,17 @@ class EMMAAnalysis(BaseAnalysis):
                         .ewm(span=30)
                         .mean()
                     )
-                    reverse_cum_min_objective = objective[::-1].cummin()[::-1]
-                    max_objective = objective.max()
+                    # reverse_cum_min_objective = objective[::-1].cummin()[::-1]
+                    # max_objective = objective.max()
 
-                    converged_signal = (objective - reverse_cum_min_objective) / (
-                        max_objective - reverse_cum_min_objective
-                    ) < 0.02
+                    # converged_signal = (objective - reverse_cum_min_objective) / (
+                    #     max_objective - reverse_cum_min_objective
+                    # ) < 0.02
+
+                    # converged_signal = objective / reverse_cum_min_objective < 1.2
+
+                    conv_thresh = 0.5 if prefix == "train" else 2
+                    converged_signal = objective < conv_thresh
 
                     for i in range(len(idx_transfers) - 1):
                         cur_idx = idx_transfers[i]
