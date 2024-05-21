@@ -1,0 +1,7 @@
+experiment_name: forward_model_door_key_change
+model_cls: emma.poi.poi_exploration.POIAgnosticPPO
+defaults:
+    - door_key_change
+    - model_trainer/forward_model
+    - poi_model/zero
+    - _self_

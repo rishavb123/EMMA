@@ -1,0 +1,24 @@
+experiment_name: emma_experiment
+n_runs: 10
+n_envs: 5
+n_run_method: series
+seed: 0
+wandb:
+    project: emma
+    # mode: disabled
+device: cuda
+log: true
+save_model: true
+record_policy_videos: true
+analysis:
+    wandb_keys: 
+        - global_step
+        - external_model_train/av_poi_per_step
+        - external_model_train/av_external_model_loss
+        - external_model_eval/av_poi_per_step
+        - external_model_eval/av_external_model_loss
+        - rollout/ep_rew_mean
+        - rollout/ep_len_mean
+defaults:
+    - emma_config
+    - _self_

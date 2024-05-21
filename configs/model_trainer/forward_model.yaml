@@ -1,0 +1,27 @@
+_target_: emma.external_model.ForwardModelTrainer
+model:
+    _target_: emma.external_model.MCModule
+    inner_module:
+        _target_: experiment_lab.common.networks.create_aggregated_network
+        module_lst:
+            - _target_: torch.nn.Identity
+            - _target_: torch.nn.Identity
+        aggregator:
+            _target_: hydra.utils.get_method
+            path: torch.cat
+        output_module:
+            _target_: experiment_lab.common.networks.create_mlp_network
+            layer_sizes:
+                - "${eval: ${obs_length} + ${model_trainer.n_actions}}"
+                - 300
+                - 100
+                - 300
+                - ${obs_length}
+            layer_activations:
+                _target_: torch.nn.ReLU
+            final_activation:
+                _target_: torch.nn.Sigmoid
+            dropout_p: 0.5
+    num_samples: 30
+batch_size: 256
+n_actions: 7

@@ -1,0 +1,10 @@
+wandb:
+    mode: disabled
+record_policy_videos: false
+hydra:
+    verbose: true
+device: mps
+total_time_steps: 100
+n_runs: 2
+defaults:
+    - _self_

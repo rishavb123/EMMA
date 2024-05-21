@@ -1,0 +1,48 @@
+experiment_name: door_key_change
+env_config:
+    env_id: emma.envs.color_door_key.ColoredDoorKeyEnv
+    door_color: red
+    correct_key_color:
+        - red
+        - blue
+    key_colors:
+        - [red, blue]
+poi_model:
+    _target_: emma.poi.poi_field.ZeroPOIField
+model_cls: emma.poi.poi_exploration.POIAgnosticPPO
+model_kwargs:
+    learning_rate: 0.00075
+    n_steps: 2048
+    batch_size: 256
+    n_epochs: 4
+    gamma: 0.99
+    gae_lambda: 0.95
+    clip_range: 0.2
+    ent_coef: 0.05 # TOOD: try a higher value of this when using POI exploration
+    vf_coef: 0.5
+    max_grad_norm: 0.5
+    infos_to_save:
+        correct_key_color_idx: []
+        agent_x: []
+        agent_y: []
+        agent_dir: []
+policy_cls: stable_baselines3.ppo.MlpPolicy
+policy_kwargs:
+    net_arch:
+        pi: [256, 64]
+        vf: [256, 64]
+wrapper_cls_lst:
+    - minigrid.wrappers.OneHotPartialObsWrapper
+    - minigrid.wrappers.ImgObsWrapper
+    - gymnasium.wrappers.FlattenObservation
+obs_length: 980
+emma_wrapper_kwargs:
+    per_step_poi_emb: False
+total_time_steps: 10000000
+transfer_steps:
+    - 5000000
+video_freq: 100000
+video_length: 200
+defaults:
+    - base_emma
+    - _self_

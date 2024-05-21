@@ -1,0 +1,35 @@
+experiment_name: walker
+env_config:
+    env_id:
+        - dm_control/walker-walk-v0
+poi_model:
+    _target_: emma.poi.poi_field.ZeroPOIField
+model_cls: emma.poi.poi_exploration.POIAgnosticPPO
+model_kwargs:
+    learning_rate: 0.00075
+    n_steps: 2048
+    batch_size: 256
+    n_epochs: 4
+    gamma: 0.99
+    gae_lambda: 0.95
+    clip_range: 0.2
+    ent_coef: 0.01
+    vf_coef: 0.5
+    max_grad_norm: 0.5
+policy_cls: stable_baselines3.ppo.MlpPolicy
+policy_kwargs:
+    net_arch:
+        pi: [64, 64]
+        vf: [64, 64]
+wrapper_cls_lst:
+    - gymnasium.wrappers.FlattenObservation
+obs_length: 24
+emma_wrapper_kwargs:
+    per_step_poi_emb: False
+total_time_steps: 2000000
+video_freq: 100000
+video_length: 200
+defaults:
+    - base_emma
+    - _self_
+

@@ -1,0 +1,25 @@
+experiment_name: disagreement_diayn_dir_prediction_door_key_change
+model_cls: emma.poi.poi_exploration.POISkillSamplingDiaynPPO
+model_kwargs:
+    beta: 0.1
+    discriminator:
+        _target_: experiment_lab.common.networks.create_mlp_network
+        layer_sizes:
+            - ${obs_length}
+            - 200
+            - ${poi_emb_learner.poi_emb_size}
+        layer_activations:
+            _target_: torch.nn.LeakyReLU
+            negative_slope: 0.01
+        final_activation:
+            _target_: torch.nn.Softmax
+    discriminator_optimizer_cls: torch.optim.Adam
+    discriminator_optimizer_kwargs: null
+    discriminator_batch_size: 128
+policy_cls: stable_baselines3.ppo.MultiInputPolicy
+defaults:
+    - door_key_change
+    - model_trainer/direction_prediction
+    - poi_model/disagreement
+    - poi_emb_learner/skill_manager
+    - _self_
