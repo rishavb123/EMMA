@@ -2,7 +2,6 @@ experiment_name: disagreement_diayn_forward_model_door_key_change
 model_cls: emma.poi.poi_exploration.POISkillSamplingDiaynPPO
 model_kwargs:
     beta: 5
-    n_epochs: 16
     discriminator:
         _target_: experiment_lab.common.networks.create_mlp_network
         layer_sizes:

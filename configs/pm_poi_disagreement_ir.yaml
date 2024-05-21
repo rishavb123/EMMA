@@ -1,7 +1,8 @@
 experiment_name: disagreement_ir_policy_door_key_change
 model_cls: emma.poi.poi_exploration.POIInstrinsicRewardPPO
 model_kwargs:
-    beta: 0.1
+    beta: 0
+    n_epochs: 16
 defaults:
     - policy_model
     - poi_model/disagreement
