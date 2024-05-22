@@ -2,15 +2,15 @@ import seaborn as sns
 import pickle as pkl
 import matplotlib.pyplot as plt
 
-filename = "/Users/rbhagat/projects/EMMA/plotting/outputs/kp_orig/plot_results.pkl"
-run_id_mapping = {
-    "disagreement_diayn_key_prediction_door_key_change_10_1715020025": "POI Diayn",
-    # "disagreement_diayn_key_prediction_door_key_change_1714548168": "5 Skill POI Diayn",
-    "disagreement_ir_emb_key_prediction_door_key_change_1714165501": "POI IR w/ POI emb",
-    "key_prediction_door_key_change_1714165830": "PPO Baseline",
-    "disagreement_diayn_key_prediction_door_key_change_1714165692": "Diayn Baseline",
-    # "warmstart_both_disagreement_diayn_10_skills_key_prediction_door_key_change_1715352928": "100k Warmstart POI Diayn",
-}
+# filename = "/Users/rbhagat/projects/EMMA/plotting/outputs/kp_orig/plot_results.pkl"
+# run_id_mapping = {
+#     "disagreement_diayn_key_prediction_door_key_change_10_1715020025": "POI Diayn",
+#     # "disagreement_diayn_key_prediction_door_key_change_1714548168": "5 Skill POI Diayn",
+#     "disagreement_ir_emb_key_prediction_door_key_change_1714165501": "POI IR w/ POI emb",
+#     "key_prediction_door_key_change_1714165830": "PPO Baseline",
+#     "disagreement_diayn_key_prediction_door_key_change_1714165692": "Diayn Baseline",
+#     # "warmstart_both_disagreement_diayn_10_skills_key_prediction_door_key_change_1715352928": "100k Warmstart POI Diayn",
+# }
 
 # filename = "/Users/rbhagat/projects/EMMA/plotting/outputs/kp_repeat/plot_results.pkl"
 # run_id_mapping = {
@@ -28,6 +28,14 @@ run_id_mapping = {
 #     "key_prediction_door_key_change_1715735670": "PPO Baseline",
 #     "traditional_diayn_10_skills_key_prediction_door_key_change_1715886603": "Diayn Baseline",
 # }
+
+filename = "/Users/rbhagat/projects/EMMA/plotting/outputs/policy_expl/plot_results.pkl"
+run_id_mapping = {
+    "disagreeement_diayn_policy_door_key_change_1716253138": "POI Diayn",
+    # "disagreement_ir_emb_key_prediction_door_key_change_1715735695": "POI IR w/ POI emb",
+    "policy_door_key_change_1716252909": "PPO Baseline",
+    "traditional_diayn_policy_door_key_change_1716253200": "Diayn Baseline",
+}
 
 with open(filename, "rb") as f:
     plot_dfs = pkl.load(f)
